@@ -1,0 +1,96 @@
+
+from datetime import datetime
+import json
+import time
+from typing import Dict, List, Tuple
+from urllib.parse import urlparse
+
+from .monitor_ui import MonitorApp
+from .monitor import Link, Links, merge_status
+import click
+import requests
+
+KEY_LINKS = 'links'
+
+@click.group()
+@click.option('--networks', metavar='<networks.json>')
+@click.pass_context
+def main(ctx: click.Context, networks: str):
+    with open(networks, 'rb') as fd:
+        network_json = json.load(fd)
+    links = Links(network_json)
+
+    ctx.ensure_object(dict)
+    ctx.obj[KEY_LINKS] = links
+
+def build_blocks_for_slack(links: Links, link_status: Dict[Tuple[str,str],List[Link]]) -> List[any]:
+    blocks = []
+    blocks.append({
+        'type': 'section',
+        'fields': [
+            {'type': 'mrkdwn', 'text': '*Source*\n*Destination*' },
+            {'type': 'mrkdwn', 'text': '*Forward Status*\n*Backward Status*' },
+        ],
+    })
+
+    def state_to_mrkdwn(link: Link)->str:
+        if link.state == Link.GOOD:
+            return ':large_green_circle: OK'
+        else:
+            return f':red_circle: BAD (cnt={link.pending_count},dur={link.pending_duration} secs)'
+
+    for conn, status in link_status.items():
+        src_name = links.name_of(conn[0])
+        dst_name = links.name_of(conn[1])
+        fw_status = state_to_mrkdwn(status[0])
+        bw_status = state_to_mrkdwn(status[1])
+        blocks.append({
+            'type': 'section',
+            'fields': [
+                {'type': 'plain_text', 'text': f'{src_name}\n{dst_name}'},
+                {'type': 'plain_text', 'text': f'{fw_status}\n{bw_status}' },
+            ],
+        })
+    return blocks
+
+
+@main.command('monitor')
+@click.pass_obj
+@click.option('--interval', type=click.INT, default=30)
+@click.option('--slack_hook', type=str, envvar='SLACK_HOOK')
+@click.option('--slack_channel', type=str, envvar='SLACK_CHANNEL')
+def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_channel: str = None):
+    links: Links = obj[KEY_LINKS]
+    links.update()
+
+    def on_update():
+        if slack_hook is not None and slack_channel is not None:
+            link_status = merge_status(links)
+            blocks = build_blocks_for_slack(links, link_status)
+            msg = {
+                'channel': slack_channel,
+                'username': 'BTP Monitor',
+                'text': 'Status has changed',
+                'blocks': blocks,
+            }
+            requests.post(slack_hook, json=msg)
+
+    app = MonitorApp(links, interval, on_update)
+    app.run()
+
+@main.command('status')
+@click.pass_obj
+def show_status(obj: dict):
+    links: Links = obj[KEY_LINKS]
+    btp_status = links.query_status()
+    link_status = merge_status(btp_status)
+    click.secho(f'| {"Network":^44s} | {"FW Pending":^10s} | {"BW Pending":^10s} |',reverse=True)
+    for conn, sl in link_status.items():
+        fw_pending = sl[0].tx_seq - sl[1].rx_seq
+        bw_pending = sl[1].tx_seq - sl[0].rx_seq
+        src_name = links.name_of(urlparse(conn[0]).netloc)
+        dst_name = links.name_of(urlparse(conn[1]).netloc)
+        click.echo(f'| {src_name:>20s} -> {dst_name:<20s} | {fw_pending:10d} | {bw_pending:10d} |')
+
+if __name__ == '__main__':
+    main()

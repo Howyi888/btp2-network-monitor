@@ -1,0 +1,55 @@
+
+/* StatusEntry {
+    layout: horizontal;
+    background: $boost;
+    height: 7;
+    border: solid white;
+} */
+
+MonitorApp {
+    layout: vertical;
+}
+
+StatusEntry {
+    layout: horizontal;
+    border: solid yellow;
+    grid-gutter: 1;
+}
+
+#forward, #backward {
+    width: 2fr;
+    height: auto;
+    text-align: center;
+    content-align: center middle;
+    border:solid white;
+}
+
+#bottom {
+    dock: bottom;
+    height: 1;
+    background: grey;
+}
+
+#monitors {
+    height: auto;
+}
+
+#log {
+    height: 1fr;
+    border:solid yellow;
+}
+
+.bad {
+    color: white;
+    background: red;
+}
+
+.pending {
+    color: yellow;
+    background: green;
+}
+
+.good {
+    color: white;
+    background: green;
+}
