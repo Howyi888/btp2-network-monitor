@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
-import time
-from typing import Dict, Tuple
-from rich.console import RenderableType
+from typing import Dict, Optional, Tuple
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Static, TextLog
 from textual.containers import Container
 
-from .monitor import Link, Links, merge_status
-
+from .monitor import Link, Links, strfdelta
 
 class StatusEntry(Static):
     def __init__(self, links: Links, conn: Tuple[str,str]):
@@ -33,7 +30,7 @@ class StatusEntry(Static):
 
     @staticmethod
     def state_from_link(link: Link):
-        return f'[b]{link.state.upper()}[/b]\ntx_seq={link.tx_seq}, rx_seq={link.rx_seq}\npending={link.pending_count}, delay={link.pending_duration}'
+        return f'[b]{link.state.upper()}[/b]\ntx_seq={link.tx_seq}, rx_seq={link.rx_seq}\npending={link.pending_count}, delay={strfdelta(link.pending_duration)}'
 
     def update_status(self, w: Static, link: Link):
         if link.state == Link.BAD:
@@ -60,6 +57,15 @@ class MonitorApp(App):
         self.__links = links
         self.__interval = interval
         self.__on_update = on_update
+        self.__on_log = None
+
+    @property
+    def on_log(self) -> Optional[callable]:
+        return self.__on_log
+
+    @on_log.setter
+    def on_log(self, on_log: callable):
+        self.__on_log = on_log
 
     def compose(self) -> ComposeResult:
         yield Header(name='BTP2 Network Monitor')
@@ -78,19 +84,28 @@ class MonitorApp(App):
 
 
     def on_mount(self) -> None:
-        self.__log.write(f'{str(datetime.now())}: START')
+        self.write_log(f'{str(datetime.now())}: START')
         self.update_self()
         self.set_interval(self.__interval, self.update_status)
 
+    def write_log(self, msg: any):
+        if self.__on_log is not None:
+            self.__on_log(msg)
+        self.__log.write(msg)
+
     def update_status(self) -> None:
-        changed, updated = self.__links.update()
+        try:
+            changed, updated = self.__links.update()
+        except BaseException as exc:
+            self.write_log(f'{str(datetime.now())}: FAIL to update err={exc}')
+            return
         self.update_self()
         if changed:
             self.__on_update()
-            if len(updated)>0:
-                self.__log.write(f'{str(datetime.now())}: UPDATED')
-                for link in updated:
-                    self.__log.write(f'* {self.__links.name_of(link.src)} -> {self.__links.name_of(link.dst)} : {link.state.upper()} pending={link.pending_count} delay={link.pending_duration}')
+        if len(updated)>0:
+            self.write_log(f'{str(datetime.now())}: UPDATED')
+            for event in updated:
+                self.write_log(f'* {str(event)}')
 
     def update_self(self):
         self.__bottom.update("[b]Last Update:[/b] "+str(datetime.now()))

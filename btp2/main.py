@@ -59,7 +59,8 @@ def build_blocks_for_slack(links: Links, link_status: Dict[Tuple[str,str],List[L
 @click.option('--interval', type=click.INT, default=30)
 @click.option('--slack_hook', type=str, envvar='SLACK_HOOK')
 @click.option('--slack_channel', type=str, envvar='SLACK_CHANNEL')
-def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_channel: str = None):
+@click.option('--log_file', type=str, envvar="LOG_FILE")
+def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_channel: str = None, log_file: str = None):
     links: Links = obj[KEY_LINKS]
     links.update()
 
@@ -76,7 +77,15 @@ def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_
             requests.post(slack_hook, json=msg)
 
     app = MonitorApp(links, interval, on_update)
-    app.run()
+    if log_file is not None:
+        with open(log_file, "+at") as fd:
+            def on_log(log):
+                print(log, file=fd, flush=True)
+            app.on_log = on_log
+            app.run()
+    else:
+        app.run()
+
 
 @main.command('status')
 @click.pass_obj
