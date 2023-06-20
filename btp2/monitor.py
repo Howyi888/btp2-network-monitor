@@ -159,7 +159,7 @@ class LinkEvent(tuple):
         elif name == self.RX:
             return f'{link_str} : RX count={self.count} delay={strfdelta(self.delta)}'
         elif name == self.STATE:
-            return f'{link_str} : {self.after.upper()}'
+            return f'{link_str} : {self.after.upper()} delay={strfdelta(self.link.pending_duration)}'
         else:
             super().__str__()
 

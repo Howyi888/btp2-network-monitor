@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 from urllib.parse import urlparse
 
 from .monitor_ui import MonitorApp
-from .monitor import Link, Links, merge_status
+from .monitor import Link, LinkEvent, Links, merge_status, strfdelta
 import click
 import requests
 
@@ -37,7 +37,7 @@ def build_blocks_for_slack(links: Links, link_status: Dict[Tuple[str,str],List[L
         if link.state == Link.GOOD:
             return ':large_green_circle: OK'
         else:
-            return f':red_circle: BAD (cnt={link.pending_count},dur={link.pending_duration} secs)'
+            return f':red_circle: BAD (cnt={link.pending_count},dur={strfdelta(link.pending_duration)})'
 
     for conn, status in link_status.items():
         src_name = links.name_of(conn[0])
@@ -64,14 +64,22 @@ def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_
     links: Links = obj[KEY_LINKS]
     links.update()
 
-    def on_update():
+    def on_update(changes: List[LinkEvent]):
         if slack_hook is not None and slack_channel is not None:
+            items = []
+            for c in changes:
+                link_str = f'{c.link.src_name} -> {c.link.dst_name}'
+                if c.after == Link.GOOD:
+                    items.append(f'{link_str} : :large_green_circle: *GOOD*')
+                else:
+                    items.append(f'{link_str} : :red_circle: *BAD*')
+            change_text = "\n".join(items)
             link_status = merge_status(links)
             blocks = build_blocks_for_slack(links, link_status)
             msg = {
                 'channel': slack_channel,
                 'username': 'BTP Monitor',
-                'text': 'Status has changed',
+                'text': change_text,
                 'blocks': blocks,
             }
             requests.post(slack_hook, json=msg)

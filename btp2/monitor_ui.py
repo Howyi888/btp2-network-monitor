@@ -3,10 +3,10 @@
 from datetime import datetime
 from typing import Dict, Optional, Tuple
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Static, TextLog
-from textual.containers import Container
+from textual.widgets import Header, Static, TextLog, ProgressBar
+from textual.containers import Container, Horizontal
 
-from .monitor import Link, Links, strfdelta
+from .monitor import Link, LinkEvent, Links, strfdelta
 
 class StatusEntry(Static):
     def __init__(self, links: Links, conn: Tuple[str,str]):
@@ -58,6 +58,7 @@ class MonitorApp(App):
         self.__interval = interval
         self.__on_update = on_update
         self.__on_log = None
+        self.__last_update: Optional[datetime] = None
 
     @property
     def on_log(self) -> Optional[callable]:
@@ -79,14 +80,22 @@ class MonitorApp(App):
         self.__log = TextLog(id="log")
         self.__log.border_title = 'Log'
         yield self.__log
-        self.__bottom = Static(id='bottom')
-        yield self.__bottom
+        self.__progress = ProgressBar(total=self.__interval, show_percentage=False, show_eta=False)
+        self.__bottom = Static()
+        yield Horizontal(self.__progress, self.__bottom, id="bottom")
 
+    def update_progress(self):
+        if self.__last_update is not None:
+            now = datetime.now()
+            delta = now - self.__last_update
+            passed = delta.total_seconds()
+            self.__progress.progress = min(passed, self.__interval)
 
     def on_mount(self) -> None:
         self.write_log(f'{str(datetime.now())}: START')
         self.update_self()
         self.set_interval(self.__interval, self.update_status)
+        self.set_interval(1.0, self.update_progress)
 
     def write_log(self, msg: any):
         if self.__on_log is not None:
@@ -94,20 +103,24 @@ class MonitorApp(App):
         self.__log.write(msg)
 
     def update_status(self) -> None:
+        now = datetime.now()
         try:
             changed, updated = self.__links.update()
         except BaseException as exc:
-            self.write_log(f'{str(datetime.now())}: FAIL to update err={exc}')
+            self.write_log(f'{str(now)}: FAIL to update err={exc}')
             return
-        self.update_self()
+        self.update_self(now=now)
         if changed:
-            self.__on_update()
+            self.__on_update(list(filter(lambda x: x.name == LinkEvent.STATE, updated)))
         if len(updated)>0:
-            self.write_log(f'{str(datetime.now())}: UPDATED')
+            self.write_log(f'{str(now)}: UPDATED')
             for event in updated:
                 self.write_log(f'* {str(event)}')
 
-    def update_self(self):
-        self.__bottom.update("[b]Last Update:[/b] "+str(datetime.now()))
+    def update_self(self, now: Optional[datetime] = None):
+        if now is None:
+            now = datetime.now()
+        self.__last_update = now
+        self.__bottom.update("[b]Last Update:[/b] "+str(now))
         for entry in self.__entries.values():
             entry.update_self()

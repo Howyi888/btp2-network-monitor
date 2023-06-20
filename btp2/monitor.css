@@ -12,7 +12,7 @@ MonitorApp {
 
 StatusEntry {
     layout: horizontal;
-    border: solid yellow;
+    border: round yellow;
     grid-gutter: 1;
 }
 
@@ -21,13 +21,12 @@ StatusEntry {
     height: auto;
     text-align: center;
     content-align: center middle;
-    border:solid white;
+    border:round white;
 }
 
 #bottom {
     dock: bottom;
-    height: 1;
-    background: grey;
+    height: auto;
 }
 
 #monitors {
@@ -36,7 +35,7 @@ StatusEntry {
 
 #log {
     height: 1fr;
-    border:solid yellow;
+    border: round yellow;
 }
 
 .bad {
