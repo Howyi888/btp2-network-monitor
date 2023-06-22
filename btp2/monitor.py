@@ -40,8 +40,10 @@ class Link:
         self.tx_history: List[Tuple[int,datetime]] = []
         self.tx_seq = None
         self.tx_ts = None
+        self.tx_height = None
         self.rx_seq = None
         self.rx_ts = None
+        self.rx_height = None
         self.time_limit = time_limit
         self.state = Link.UNKNOWN
 
@@ -64,7 +66,7 @@ class Link:
     def __str__(self) -> str:
         return f'Link(src={self.src},dst={self.dst},tx={self.tx_seq},rx={self.rx_seq},state={self.state})'
     
-    def update(self, tx: int, rx: int, now: Optional[datetime] = None) -> Tuple[bool, List['LinkEvent']]:
+    def update(self, tx: int, rx: int, tx_height: int, rx_height: int, now: Optional[datetime] = None) -> Tuple[bool, List['LinkEvent']]:
         if now is None:
             now = datetime.now()
         events = []
@@ -75,10 +77,14 @@ class Link:
             self.tx_history.append((tx, now))
             events.append(LinkEvent.TXEvent(self, tx_count, now))
 
+        if self.tx_height is None or self.tx_height < tx_height:
+            self.tx_height = tx_height
+
         if self.rx_seq is None or self.rx_seq < rx:
             while len(self.tx_history) > 0 and self.tx_history[0][0] <= rx:
                 seq, ts = self.tx_history.pop(0)
                 rx_count = (seq - self.rx_seq) if self.rx_seq is not None else 0
+                self.rx_height = rx_height
                 self.rx_seq = seq
                 events.append(LinkEvent.RXEvent(self, rx_count, now-ts))
 
@@ -88,6 +94,9 @@ class Link:
                 self.rx_seq = rx
                 events.append(LinkEvent.RXEvent(self, rx_count, now-ts))
             self.rx_ts = now
+
+        if self.rx_height is None or self.rx_height < rx_height:
+            self.rx_height = rx_height
         
         if len(self.tx_history) > 0:
             first = self.tx_history[0]
@@ -222,11 +231,13 @@ class Links:
         for conn, status in btp_status.items():
             source, target = conn
             tx_seq = status.tx_seq
+            tx_height = status.current_height
             rx_seq = btp_status[(target,source)].rx_seq
+            rx_height = btp_status[(target,source)].verifier.height
             src_net = urlparse(source).netloc
             dst_net = urlparse(target).netloc
             link = self.get_link(src_net, dst_net)
-            change, events = link.update(tx_seq, rx_seq, now)
+            change, events = link.update(tx_seq, rx_seq, tx_height, rx_height, now)
             if change:
                 status_change = True
             link_events += events
