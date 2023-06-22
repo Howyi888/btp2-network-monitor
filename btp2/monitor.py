@@ -168,29 +168,33 @@ class Links:
     def __init__(self, networks: List[dict]):
         self.__bmcs = build_proxies(networks)
         self.__links = {}
-        tx_limits = {}
-        rx_limits = {}
-        names = {}
+        self.__networks = {}
         for net in networks:
             network = net['network']
-            tx_limits[network] = net.get('tx_limit', 30)
-            rx_limits[network] = net.get('rx_limit', 30)
-            names[network] = net.get('name', network)
-        self.__tx_limits = tx_limits
-        self.__rx_limits = rx_limits
-        self.__names = names
+            if network in self.__networks:
+                raise Exception(f'duplicate network id={network}')
+            self.__networks[network] = net
+
+    def get_rx_limit(self, id: str) -> int:
+        return self.__networks[id].get('rx_limit', 30)
+
+    def get_tx_limit(self, id: str) -> int:
+        return self.__networks[id].get('tx_limit', 30)
+
+    def name_of(self, id: str) -> str:
+        return self.__networks.get(id, {}).get('name', id)
+
+    def get_network(self, id: str) -> any:
+        return self.__networks.get(id, None)
 
     def get_link(self, src: str, dst: str) -> Link:
         key = (src, dst)
         if key not in self.__links:
-            time_limit = self.__rx_limits[src]+self.__tx_limits[dst]
+            time_limit = self.get_rx_limit(src)+self.get_tx_limit(dst)
             src_name = self.name_of(src)
             dst_name = self.name_of(dst)
             self.__links[key] = Link(src, dst, time_limit, src_name=src_name, dst_name=dst_name)
         return self.__links[key]
-
-    def name_of(self, net: str) -> str:
-        return self.__names.get(net, net)
 
     def keys(self):
         return self.__links.keys()
