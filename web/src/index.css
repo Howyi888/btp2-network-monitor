@@ -16,7 +16,7 @@ body > #root > div {
   height: 100vh;
 }
 
-#network-description {
+#link-description {
   flex-flow: row wrap;
   padding: 2px;
 }
@@ -25,19 +25,15 @@ body > #root > div {
   text-decoration-style: dotted;
 }
 
-#network-description > .chakra-text {
+#link-description > .chakra-text {
   width: 50%;
   white-space: nowrap;
   overflow-x: hidden;
 }
 
-#network-description > div {
+#link-description > div {
   white-space: nowrap;
   overflow-x: hidden;
   /* background-color: aquamarine; */
   width: 50%;
 }
-
-/* #network-info > div > .chakra-badge {
-  border: 1px solid;
-} */

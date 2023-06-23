@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from datetime import datetime
 import json
+import os
 from threading import Timer
 from typing import List, Optional, TypedDict
 
@@ -8,11 +9,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from btp2.monitor import LinkEvent, Links
-from storage import Log, Storage
+from .monitor import LinkEvent, Links
+from .storage import Log, Storage
 
-NETWORKS_JSON = "networks.json"
-REFRESH_INTERVAL = 30.0
+NETWORKS_JSON = os.environ.get('NETWORKS_JSON', 'networks.json')
+DOCUMENT_ROOT = os.environ.get('DOCUMENT_ROOT', "web/build/")
+STORAGE_URL = os.environ.get('STORAGE_URL', ':memory:')
+REFRESH_INTERVAL = float(os.environ.get('REFRESH_INTERVAL', '30.0'))
 INITIAL_INTERVAL = 1.0
 
 class LinkID(TypedDict):
@@ -34,21 +37,16 @@ class LinkInfo(TypedDict):
 
 class NetworkInfo(TypedDict):
     network: str
-    #name: NotRequired[str]
     bmc: str
-    #bmcm: NotRequired[str]
-    #bmcs: NotRequired[str]
     endpoint: str
-    #tx_limit: NotRequired[int]
-    #rx_limit: NotRequired[int]
 
 class MonitorBackend:
-    def __init__(self, db_url: str = ":memory:"):
+    def __init__(self):
         with open(NETWORKS_JSON, 'rb') as fd:
             network_json = json.load(fd)
         self.__links = Links(network_json)
         self.__initialized = False
-        self.__storage = Storage(db_url)
+        self.__storage = Storage(STORAGE_URL)
         self.__stopped = False
         self.try_update()
 
@@ -147,7 +145,7 @@ class MonitorBackend:
             if 'dst' in log:
                 log['dst_name'] = be.__links.name_of(log['dst'])
         return logs
-    
+
     def term(self):
         if self.__stopped:
             return
@@ -156,7 +154,7 @@ class MonitorBackend:
             self.__timer.cancel()
             self.__timer = None
         self.__storage.term()
-        
+
 
 be = MonitorBackend()
 
@@ -188,4 +186,4 @@ async def getLinks() -> List[LinkID]:
 async def getLogs(limit: Optional[int] = None, start: Optional[int] = None, end: Optional[int] = None) -> List[dict]:
     return be.get_logs(start=start, limit=limit, end=end)
 
-app.mount("/", StaticFiles(directory="web/build/", html=True), name="static")
+app.mount("/", StaticFiles(directory=DOCUMENT_ROOT, html=True), name="static")

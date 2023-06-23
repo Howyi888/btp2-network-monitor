@@ -1,5 +1,5 @@
 import { ArrowForwardIcon, RepeatIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, Flex, IconButton, Spinner, Tag, Text } from "@chakra-ui/react";
+import { Badge, Box, Divider, Flex, IconButton, Spinner, Tag, Text, Tooltip } from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, {Label} from "react";
 import NetworkInfo from "./Network";
@@ -7,6 +7,20 @@ import NetworkInfo from "./Network";
 const COLOR_FOR = {
     good: 'green',
     bad: 'red'
+}
+
+const LinkDescItem = ({title, desc, value}) => {
+    return (
+        <Flex fontSize="sm">
+            <Flex flex="1" justifyContent="right">
+            <Tooltip label={desc || ""}>{title}</Tooltip>
+            &nbsp;&bull;&nbsp;
+            </Flex>
+            <Flex flex="1">
+             {value}
+            </Flex>
+        </Flex>
+    )
 }
 
 const Link = ({url, link}) => {
@@ -27,19 +41,11 @@ const Link = ({url, link}) => {
 
     const status = statusQuery.data;
     const updateStatus = (event: Event) => {
-        queryClient.invalidateQueries(queryKey)
-    }
-
-    const seqDiff = ({tx_seq, rx_seq}) => {
-        if (tx_seq > rx_seq) {
-            return <span size='xs'>&nbsp;(-{tx_seq - rx_seq})</span>;
-        } else {
-            return null;
-        }
+        queryClient.invalidateQueries(queryKey);
     }
 
     return (
-        <Box p="2" borderColor="gray.400" borderWidth="1px" borderRadius="lg" margin="2px" width="50%" id="network-info">
+        <Box p="2" borderColor="gray.400" borderWidth="1px" borderRadius="lg" margin="2px" width="50%" id="link-info">
         <Flex>
             <Flex flex="1">
             <NetworkInfo url={url} id={status.src} name={status.src_name} />
@@ -52,13 +58,13 @@ const Link = ({url, link}) => {
             <IconButton margin="2px" size="xs" onClick={updateStatus} isLoading={statusQuery.isLoading} icon={<RepeatIcon />} />
         </Flex>
         <Divider />
-        <Flex id="network-description">
-        <Flex fontSize="sm">TX &bull; {status.tx_seq}</Flex>
-        <Flex fontSize="sm">RX &bull; {status.rx_seq}{seqDiff(status)}</Flex>
-        <Flex fontSize="sm">TXH &bull; {status.tx_height}</Flex>
-        <Flex fontSize="sm">RXH &bull; {status.rx_height}</Flex>
-        <Flex fontSize="sm">PENDING &bull; {status.pending_count}</Flex>
-        <Flex fontSize="sm">DELAY &bull; {status.pending_delay}</Flex>
+        <Flex id="link-description">
+        <LinkDescItem title="TX Sequence" value={status.tx_seq} />
+        <LinkDescItem title="RX Sequence" value={status.rx_seq} />
+        <LinkDescItem title="TX Height" desc='Last block height of source blockchain' value={status.tx_height} />
+        <LinkDescItem title="RX Height" desc='Last block height of BMV in target blockchain' value={status.rx_height} />
+        <LinkDescItem title="Pending Count" desc='Pending message count' value={status.pending_count} />
+        <LinkDescItem title="Pending Delay" desc='Delay after first pending message' value={status.pending_delay} />
         </Flex>
         <Divider />
         <Flex id="network-state">

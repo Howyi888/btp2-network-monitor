@@ -49,7 +49,7 @@ class StatusEntry(Static):
         self.update_status(self.__backward, bw_link)
 
 class MonitorApp(App):
-    CSS_PATH = 'monitor.css'
+    CSS_PATH = 'cui.css'
     TITLE = 'BTP2 Network Monitor'
 
     def __init__(self, links: Links, interval: int = 60, on_update: callable = None):

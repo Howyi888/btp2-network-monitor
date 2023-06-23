@@ -1,14 +1,13 @@
 
-from datetime import datetime
 import json
-import time
 from typing import Dict, List, Tuple
 from urllib.parse import urlparse
 
-from .monitor_ui import MonitorApp
-from .monitor import Link, LinkEvent, Links, merge_status, strfdelta
 import click
 import requests
+
+from .cui import MonitorApp
+from .monitor import Link, LinkEvent, Links, merge_status, strfdelta
 
 KEY_LINKS = 'links'
 
@@ -108,6 +107,11 @@ def show_status(obj: dict):
         src_name = links.name_of(urlparse(conn[0]).netloc)
         dst_name = links.name_of(urlparse(conn[1]).netloc)
         click.echo(f'| {src_name:>20s} -> {dst_name:<20s} | {fw_pending:10d} | {bw_pending:10d} |')
+
+@main.command('web')
+@click.pass_obj
+def web_server(obj: dict):
+    links: Links = obj[KEY_LINKS]
 
 if __name__ == '__main__':
     main()
