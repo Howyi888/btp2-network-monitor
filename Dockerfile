@@ -6,7 +6,7 @@ RUN npm install
 RUN npm run build
 
 FROM python:3.9-alpine
-COPY ./btp2-monitor /app/btp2-monitor
+COPY ./btp2_monitor /app/btp2_monitor
 COPY ./requirements.txt /app/requirements.txt
 WORKDIR /app
 RUN pip install -r requirements.txt
@@ -16,4 +16,4 @@ ENV NETWORKS_JSON="/app/data/networks.json"
 ENV DOCUMENT_ROOT="/app/html"
 ENV STORAGE_URL="/app/data/storage.db"
 EXPOSE 8000
-CMD [ "uvicorn", "btp2-monitor.webui:app", "--port", "8000",  "--host", ""]
+CMD [ "uvicorn", "btp2_monitor.webui:app", "--port", "8000",  "--host", ""]

@@ -5,7 +5,7 @@ from setuptools import setup
 setup(
     name="btp2-monitor",
     version="0.1.0",
-    py_modules=['btp2-monitor'],
+    py_modules=['btp2_monitor'],
     install_requires=[
         'iconsdk',
         'click',
@@ -15,7 +15,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'btp2-monitor=btp2-monitor.main:main',
+            'btp2-monitor=btp2_monitor.main:main',
         ]
     }
 )
