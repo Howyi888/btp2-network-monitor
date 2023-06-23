@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import os
 from threading import Timer
+import traceback
 from typing import List, Optional, TypedDict
 
 from fastapi import FastAPI
@@ -76,6 +77,7 @@ class MonitorBackend:
             now = datetime.now()
             updated, changes = self.__links.update()
         except BaseException as exc:
+            traceback.print_exec()
             self.write_log(now, "", "", "log", f'Exception:{str(exc)}')
             self.__timer = Timer(REFRESH_INTERVAL, self.try_update)
             self.__timer.start()
@@ -153,6 +155,7 @@ class MonitorBackend:
         if self.__timer is not None:
             self.__timer.cancel()
             self.__timer = None
+        self.write_log(datetime.now(), '', '', 'log', 'SHUTDOWN')
         self.__storage.term()
 
 
