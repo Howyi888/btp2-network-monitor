@@ -12,8 +12,6 @@ setup(
         'web3',
         'requests',
         'textual',
-        'fastapi',
-        'uvicorn',
     ],
     entry_points={
         'console_scripts': [
