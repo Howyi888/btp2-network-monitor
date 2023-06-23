@@ -5,7 +5,7 @@ WORKDIR /web
 RUN npm install
 RUN npm run build
 
-FROM python:3.9
+FROM python:3.9-alpine
 COPY ./btp2-monitor /app/btp2-monitor
 COPY ./requirements.txt /app/requirements.txt
 WORKDIR /app
