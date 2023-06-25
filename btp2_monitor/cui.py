@@ -33,13 +33,13 @@ class StatusEntry(Static):
         return f'[b]{link.state.upper()}[/b]\ntx_seq={link.tx_seq}, rx_seq={link.rx_seq}\npending={link.pending_count}, delay={strfdelta(link.pending_duration)}'
 
     def update_status(self, w: Static, link: Link):
-        if link.state == Link.BAD:
-            w.set_classes('bad')
-        else:
+        if link.state == Link.GOOD:
             if link.pending_count > 0:
                 w.set_classes('pending')
             else:
                 w.set_classes('good')
+        else:
+            w.set_classes('bad')
         w.update(self.state_from_link(link))
 
     def update_self(self):
@@ -107,6 +107,7 @@ class MonitorApp(App):
         try:
             changed, updated = self.__links.update()
         except BaseException as exc:
+            self.__last_update = now
             self.write_log(f'{str(now)}: FAIL to update err={exc}')
             return
         self.update_self(now=now)

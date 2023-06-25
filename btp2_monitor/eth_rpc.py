@@ -11,14 +11,21 @@ from .types import LinkStatus
 class BMCWithEthereumRPC(types.BMC):
     def __init__(self, config: dict) -> None:
         bmc = config['bmc']
-        bmcm = config['bmcm']
         url = config['endpoint']
         w3 = Web3(Web3.HTTPProvider(url))
         self.__periphery = w3.eth.contract(address=bmc, abi=eth_abi.BMCPeriphery)
-        self.__management = w3.eth.contract(address=bmcm, abi=eth_abi.BMCManagement)
+        if 'bmcm' in config:
+            self.__management = w3.eth.contract(address=config['bmcm'], abi=eth_abi.BMCManagement)
+        else:
+            self.__management = self.__periphery
+        self.__address = f'btp://{config["network"]}/{bmc}'
 
-    def getStatus(self, _link: str) -> LinkStatus:
+    @property
+    def address(self) -> str:
+        return self.__address
+
+    def get_status(self, _link: str) -> LinkStatus:
         return LinkStatus(self.__periphery.functions.getStatus(_link=_link).call())
 
-    def getLinks(self) -> Tuple[str]:
+    def get_links(self) -> Tuple[str]:
         return tuple(self.__management.functions.getLinks().call())

@@ -15,8 +15,13 @@ class BMCWithICONRPC(types.BMC):
         url = config['endpoint']
         self.__service = IconService(HTTPProvider(url))
         self.__bmc = bmc
+        self.__address = f'btp://{config["network"]}/{bmc}'
 
-    def getStatus(self, link: str) -> types.LinkStatus:
+    @property
+    def address(self) -> str:
+        return self.__address
+
+    def get_status(self, link: str) -> types.LinkStatus:
         status = self.__service.call(CallBuilder()
                 .to(self.__bmc)
                 .method('getStatus')
@@ -24,7 +29,7 @@ class BMCWithICONRPC(types.BMC):
                 .build())
         return types.LinkStatus.from_dict(status)
 
-    def getLinks(self) -> List[str]:
+    def get_links(self) -> List[str]:
         return self.__service.call(CallBuilder()
                 .to(self.__bmc)
                 .method('getLinks')

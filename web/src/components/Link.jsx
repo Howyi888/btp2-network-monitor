@@ -1,7 +1,8 @@
 import { ArrowForwardIcon, RepeatIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, Flex, IconButton, Spinner, Tag, Text, Tooltip } from "@chakra-ui/react";
+import { Badge, Box, Divider, Flex, IconButton, Tooltip } from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import React, {Label} from "react";
+import React from "react";
+import { strfdelta } from "../utils";
 import NetworkInfo from "./Network";
 
 const COLOR_FOR = {
@@ -45,29 +46,29 @@ const Link = ({url, link}) => {
     }
 
     return (
-        <Box p="2" borderColor="gray.400" borderWidth="1px" borderRadius="lg" margin="2px" width="50%" id="link-info">
+        <Box p="2" className="link-info" borderColor="gray.400">
         <Flex>
-            <Flex flex="1">
+            <Flex flex="1" overflowX="hidden" mr="10px">
             <NetworkInfo url={url} id={status.src} name={status.src_name} />
             &nbsp;
             <ArrowForwardIcon margin="0.3" />
             &nbsp;
             <NetworkInfo url={url} id={status.dst} name={status.dst_name} />
             </Flex>
-            {status.tx_seq > status.rx_seq && <Flex>Delivering<IconButton size="xs" margin="2px" isLoading="true" /></Flex>}
+            {status.tx_seq > status.rx_seq && <Flex className="delivering">Delivering<IconButton size="xs" margin="2px" isLoading="true" /></Flex>}
             <IconButton margin="2px" size="xs" onClick={updateStatus} isLoading={statusQuery.isLoading} icon={<RepeatIcon />} />
         </Flex>
         <Divider />
-        <Flex id="link-description">
+        <Flex className="link-description">
         <LinkDescItem title="TX Sequence" value={status.tx_seq} />
         <LinkDescItem title="RX Sequence" value={status.rx_seq} />
         <LinkDescItem title="TX Height" desc='Last block height of source blockchain' value={status.tx_height} />
         <LinkDescItem title="RX Height" desc='Last block height of BMV in target blockchain' value={status.rx_height} />
         <LinkDescItem title="Pending Count" desc='Pending message count' value={status.pending_count} />
-        <LinkDescItem title="Pending Delay" desc='Delay after first pending message' value={status.pending_delay} />
+        <LinkDescItem title="Pending Delay" desc='Delay after first pending message' value={strfdelta(status.pending_delay)} />
         </Flex>
         <Divider />
-        <Flex id="network-state">
+        <Flex className="network-state">
         <Badge flex="1" textAlign="center" fontSize="lg" colorScheme={COLOR_FOR[status.state]}>{String(status.state).toUpperCase()}</Badge>
         </Flex>
         </Box>

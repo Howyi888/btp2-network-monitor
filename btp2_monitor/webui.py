@@ -77,7 +77,7 @@ class MonitorBackend:
             now = datetime.now()
             updated, changes = self.__links.update()
         except BaseException as exc:
-            traceback.print_exec()
+            traceback.print_exc()
             self.write_log(now, "", "", "log", f'Exception:{str(exc)}')
             self.__timer = Timer(REFRESH_INTERVAL, self.try_update)
             self.__timer.start()

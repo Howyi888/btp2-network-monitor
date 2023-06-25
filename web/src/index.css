@@ -16,24 +16,42 @@ body > #root > div {
   height: 100vh;
 }
 
-#link-description {
-  flex-flow: row wrap;
-  padding: 2px;
-}
-
 #header-first {
   text-decoration-style: dotted;
 }
 
-#link-description > .chakra-text {
-  width: 50%;
+#popover-trigger-network-name {
   white-space: nowrap;
   overflow-x: hidden;
+  max-width: 200px;
+  text-overflow: ellipsis;
 }
 
-#link-description > div {
+.delivering {
+  color: red;
+}
+
+.link-line {
+  overflow-x: hidden;
+  padding: 4px;
+  gap: 4px;
+}
+
+.link-info {
+  flex: 1;
+  width: 50%;
+  display: inline-block;
+  border-radius: 6px;
+  border-width: 1px;
+}
+
+.link-description {
+  flex-flow: row wrap;
+  padding: 2px;
+}
+
+.link-description > div {
   white-space: nowrap;
   overflow-x: hidden;
-  /* background-color: aquamarine; */
   width: 50%;
 }

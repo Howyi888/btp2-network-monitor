@@ -5,18 +5,10 @@ import {
     PopoverContent,
     PopoverHeader, PopoverTrigger,
     Table, Tbody, Td, Th,
-    Tooltip,
     Tr
 } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import React, { useRef } from "react";
-
-const NetworkDescItem = ({title,value}) => {
-    if (!value) {
-        return null;
-    }
-    return <></>;
-}
 
 const NetworkInfo = ({url, id, name}) =>  {
     const infoQuery = useQuery( ["networkInfo", id], async () => {
@@ -50,7 +42,7 @@ const NetworkInfo = ({url, id, name}) =>  {
 
     return (
         <Popover isLazy="true" preventOverflow="true" boundary="scrollParent"
-            initialFocusRef={initialFocus}>
+            initialFocusRef={initialFocus} id="network-name">
             <PopoverTrigger><Heading size="sm">{name}</Heading></PopoverTrigger>
             <PopoverContent width="auto" id='network-info' borderColor="gray.400" marginLeft="6px">
                 <PopoverArrow bg="gray.300" />

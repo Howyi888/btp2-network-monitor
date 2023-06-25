@@ -66,10 +66,15 @@ class LinkStatus(tuple):
 
 
 class BMC(metaclass=ABCMeta):
+    @property
     @abstractmethod
-    def getStatus(_link: str) -> LinkStatus:
+    def address(self) -> str:
         pass
 
     @abstractmethod
-    def getLinks() -> Tuple[str]:
+    def get_status(self, _link: str) -> LinkStatus:
+        pass
+
+    @abstractmethod
+    def get_links(self) -> Tuple[str]:
         pass

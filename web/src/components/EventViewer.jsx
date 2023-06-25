@@ -1,6 +1,7 @@
 import { ArrowForwardIcon } from "@chakra-ui/icons";
-import { Box, Table, Tbody, Tr, Th, Td, Badge, Text, Thead, Divider } from "@chakra-ui/react";
-import React, { useEffect, useState, useRef } from "react";
+import { Badge, Box, Divider, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
+import React, { useEffect, useRef, useState } from "react";
+import { strfdelta } from "../utils";
 
 interface Log {
     sn: Number;
@@ -30,9 +31,9 @@ const rowForLog = (log: Log) => {
         msg = <Td><Text>count={extra.count}</Text></Td>
     } else if (log.event === 'rx') {
         link = <Td>{linkInfoForLog(log)}</Td>
-        msg = <Td><Text>count={extra.count} delay={extra.delta}</Text></Td>
+        msg = <Td><Text>count={extra.count} delay={strfdelta(extra.delta)}</Text></Td>
     } else if (log.event === 'state') {
-        link = linkInfoForLog(log)
+        link = <Td>{linkInfoForLog(log)}</Td>
         msg = <Td><Badge size='sm' colorScheme={COLOR_FOR[extra.after]}>{extra.after.toUpperCase()}</Badge></Td>
     } else {
         link = null

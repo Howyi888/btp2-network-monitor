@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 from datetime import datetime, timedelta
-import sys
-from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Dict, List, Optional, Tuple, TypeAlias, TypeVar
 from urllib.parse import urlparse
 
 from .eth_rpc import BMCWithEthereumRPC
@@ -14,18 +13,20 @@ BMC_FACTORY = {
     'eth': BMCWithEthereumRPC,
 }
 
-def build_proxies(networks) -> Dict[str,BMC]:
-    bmcs: Dict[str,BMC] = {}
-    for net in networks:
-        factory = BMC_FACTORY.get(net['type'], None)
-        if factory is None:
-            raise Exception(f'unknown network type={net["type"]}')
-        bmc: BMC = factory(net)
-        network = net['network']
-        bmc_address = net['bmc']
-        self = f'btp://{network}/{bmc_address}'
-        bmcs[self] = bmc
-    return bmcs
+def build_proxy(net: dict) -> BMC:
+    factory = BMC_FACTORY.get(net['type'], None)
+    if factory is None:
+        raise Exception(f'unknown network type={net["type"]}')
+    return factory(net)
+
+def bmc_changed(net: dict, bmc: str) -> dict:
+    n2 = net.copy()
+    for k in ['bmc', 'bmcm', 'bmcs']:
+        if k in n2:
+            del n2[k]
+    n2['bmc'] = bmc
+    n2['name'] = n2.get('name', net['network'])+f'({str(bmc)[:6]})'
+    return n2
 
 class Link:
     UNKNOWN = 'unknown'
@@ -80,20 +81,36 @@ class Link:
         if self.tx_height is None or self.tx_height < tx_height:
             self.tx_height = tx_height
 
+        if rx is None and rx_height is None:
+            if self.rx_seq is not None:
+                events.append(LinkEvent.StateEvent(self, self.state, Link.BAD))
+                self.rx_seq = None
+                self.rx_height = None
+                self.rx_ts = now
+                self.state = Link.BAD
+                return True, events
+            elif self.state != Link.BAD:
+                self.state = Link.BAD
+                return True, events
+            return False, events
+
         if self.rx_seq is None or self.rx_seq < rx:
             while len(self.tx_history) > 0 and self.tx_history[0][0] <= rx:
                 seq, ts = self.tx_history.pop(0)
                 rx_count = (seq - self.rx_seq) if self.rx_seq is not None else 0
-                self.rx_height = rx_height
                 self.rx_seq = seq
+                self.rx_ts = now
                 events.append(LinkEvent.RXEvent(self, rx_count, now-ts))
 
-            if rx > self.rx_seq and len(self.tx_history) > 0:
-                _, ts = self.tx_history[0]
-                rx_count = (rx - self.rx_seq) if self.rx_seq is not None else 0
+            if self.rx_seq is None:
                 self.rx_seq = rx
+                self.rx_ts = now
+            elif rx > self.rx_seq and len(self.tx_history) > 0:
+                _, ts = self.tx_history[0]
+                rx_count = rx - self.rx_seq
+                self.rx_seq = rx
+                self.rx_ts = now
                 events.append(LinkEvent.RXEvent(self, rx_count, now-ts))
-            self.rx_ts = now
 
         if self.rx_height is None or self.rx_height < rx_height:
             self.rx_height = rx_height
@@ -172,17 +189,22 @@ class LinkEvent(tuple):
         else:
             super().__str__()
 
+NetworkStatus: TypeAlias = Dict[Tuple[str,str],LinkStatus]
 
 class Links:
     def __init__(self, networks: List[dict]):
-        self.__bmcs = build_proxies(networks)
+        self.__bmcs = {}
         self.__links = {}
         self.__networks = {}
+        self.__configs = {}
         for net in networks:
             network = net['network']
             if network in self.__networks:
                 raise Exception(f'duplicate network id={network}')
+            bmc = build_proxy(net)
             self.__networks[network] = net
+            self.__bmcs[bmc.address] = bmc
+            self.__configs[bmc.address] = net
 
     def get_rx_limit(self, id: str) -> int:
         return self.__networks[id].get('rx_limit', 30)
@@ -214,16 +236,65 @@ class Links:
     def values(self):
         return self.__links.values()
 
-    def query_status(self) -> Dict[Tuple[str,str],LinkStatus]:
+    def add_proxy(self, addr: str) -> bool:
+        btp_addr = urlparse(addr)
+        if btp_addr.netloc not in self.__networks:
+            return False
+        net = bmc_changed(self.__networks[btp_addr.netloc], btp_addr.path[1:])
+        bmc = build_proxy(net)
+        self.__bmcs[addr] = bmc
+        self.__configs[addr] = net
+        return True
+
+    def query_status_first(self) -> NetworkStatus:
+        btp_status: Dict[Tuple[str,str],LinkStatus] = {}
+        bmc_addrs = list(self.__bmcs.keys())
+        while len(bmc_addrs):
+            addr = bmc_addrs.pop(0)
+            bmc = self.__bmcs[addr]
+            try :
+                links = bmc.get_links()
+            except BaseException as exc:
+                raise Exception(f"fail to get links from addr={addr}") from exc
+            for link in links:
+                status = bmc.get_status(link)
+                btp_status[(addr,link)] = status
+                if link not in self.__bmcs:
+                    if self.add_proxy(link):
+                        bmc_addrs.append(link)
+
+        connected = set()
+        for source, target in list(btp_status.keys()):
+            if (target, source) not in btp_status:
+                del btp_status[(source, target)]
+                continue
+            connected.add(source)
+            connected.add(target)
+        
+        networks = {}
+        bmcs = {}
+        for addr in connected:
+            bmcs[addr] = self.__bmcs[addr]
+            networks[urlparse(addr).netloc] = self.__configs[addr]
+        self.__networks = networks
+        self.__bmcs = bmcs
+        self.__configs = None
+
+        return btp_status
+
+    def query_status(self) -> NetworkStatus:
+        if self.__configs is not None:
+            return self.query_status_first()
+
         btp_status: Dict[Tuple[str,str],LinkStatus] = {}
         for addr, bmc in self.__bmcs.items():
-            links = bmc.getLinks()
+            links = bmc.get_links()
             for link in links:
-                status = bmc.getStatus(link)
+                status = bmc.get_status(link)
                 btp_status[(addr,link)] = status
         return btp_status
 
-    def apply_status(self, btp_status: Dict[Tuple[str,str],LinkStatus], now: Optional[datetime] = None) -> Tuple[bool, List[LinkEvent]]:
+    def apply_status(self, btp_status: NetworkStatus, now: Optional[datetime] = None) -> Tuple[bool, List[LinkEvent]]:
         status_change = False
         link_events: List[LinkEvent] = []
         if now is None:
@@ -232,8 +303,12 @@ class Links:
             source, target = conn
             tx_seq = status.tx_seq
             tx_height = status.current_height
-            rx_seq = btp_status[(target,source)].rx_seq
-            rx_height = btp_status[(target,source)].verifier.height
+            if (target,source) not in btp_status:
+                continue
+            else:
+                rx_seq = btp_status[(target,source)].rx_seq
+                rx_height = btp_status[(target,source)].verifier.height
+
             src_net = urlparse(source).netloc
             dst_net = urlparse(target).netloc
             link = self.get_link(src_net, dst_net)
