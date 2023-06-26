@@ -9,7 +9,7 @@ from typing import Iterable, List, Optional, TypedDict
 
 class Log(TypedDict):
     sn: int
-    ts: datetime
+    ts: float
     src: str
     dst: str
     event: str
@@ -18,7 +18,7 @@ class Log(TypedDict):
 def log_from_list(item: Iterable) -> Log:
     return {
         'sn': item[0],
-        'ts': datetime.fromisoformat(item[1]).timestamp(),
+        'ts': item[1],
         'src': item[2],
         'dst': item[3],
         'event': item[4],
@@ -29,7 +29,7 @@ class Storage:
     CREATE_LOGS_TABLE = """
 CREATE TABLE IF NOT EXISTS logs (
         sn INTEGER PRIMARY KEY AUTOINCREMENT,
-        ts TIMESTAMP,
+        ts DOUBLE,
         src TEXT,
         dst TEXT,
         event TEXT,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS logs (
 
     def write_log(self, ts: datetime, src: str, dst: str, event: str, msg: any) -> int:
         c = self.__conn.cursor()
-        c.execute('INSERT INTO logs (ts, src, dst, event, extra) values ( ?, ?, ?, ?, ? )', (ts, src, dst, event, json.dumps(msg)))
+        c.execute('INSERT INTO logs (ts, src, dst, event, extra) values ( ?, ?, ?, ?, ? )', (ts.timestamp(), src, dst, event, json.dumps(msg)))
         self.__conn.commit()
         row_id = c.lastrowid
         c.close()
