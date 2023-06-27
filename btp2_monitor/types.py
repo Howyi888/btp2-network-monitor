@@ -5,6 +5,7 @@ import json
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from typing import Tuple
+from urllib.parse import urlparse
 
 
 class VerifierStatus(tuple):
@@ -28,6 +29,18 @@ class VerifierStatus(tuple):
     def __str__(self) -> str:
         return f'VerifierStatus(height={self.height},extra={self.extra.hex()})'
 
+class NetworkID (str):
+    @staticmethod
+    def from_address(addr: str) -> 'NetworkID':
+        url = urlparse(addr)
+        return NetworkID(f'{url.netloc}-{url.path[1:]}')
+
+    @property
+    def address(self) -> str:
+        items = self.split('-')
+        if len(items) != 2:
+            raise Exception(f'invalid network id(id={self})')
+        return f'btp://{items[0]}/{items[1]}'
 
 class LinkStatus(tuple):
     def __new__(cls, __iterable: Iterable = ...) -> 'LinkStatus':

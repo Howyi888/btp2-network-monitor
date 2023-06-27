@@ -199,12 +199,12 @@ class Links:
         self.__configs = {}
         for net in networks:
             network = net['network']
-            if network in self.__networks:
+            if network in self.__configs:
                 raise Exception(f'duplicate network id={network}')
             bmc = build_proxy(net)
-            self.__networks[network] = net
+            self.__configs[network] = net
             self.__bmcs[bmc.address] = bmc
-            self.__configs[bmc.address] = net
+            self.__networks[bmc.address] = net
 
     def get_rx_limit(self, id: str) -> int:
         return self.__networks[id].get('rx_limit', 30)
@@ -238,16 +238,16 @@ class Links:
 
     def add_proxy(self, addr: str) -> bool:
         btp_addr = urlparse(addr)
-        if btp_addr.netloc not in self.__networks:
+        if btp_addr.netloc not in self.__configs:
             return False
-        net = bmc_changed(self.__networks[btp_addr.netloc], btp_addr.path[1:])
+        net = bmc_changed(self.__configs[btp_addr.netloc], btp_addr.path[1:])
         bmc = build_proxy(net)
         self.__bmcs[addr] = bmc
-        self.__configs[addr] = net
+        self.__networks[addr] = net
         return True
 
-    def query_status_first(self) -> NetworkStatus:
-        btp_status: Dict[Tuple[str,str],LinkStatus] = {}
+    def query_status(self) -> NetworkStatus:
+        btp_status: NetworkStatus = {}
         bmc_addrs = list(self.__bmcs.keys())
         while len(bmc_addrs):
             addr = bmc_addrs.pop(0)
@@ -262,36 +262,6 @@ class Links:
                 if link not in self.__bmcs:
                     if self.add_proxy(link):
                         bmc_addrs.append(link)
-
-        connected = set()
-        for source, target in list(btp_status.keys()):
-            if (target, source) not in btp_status:
-                del btp_status[(source, target)]
-                continue
-            connected.add(source)
-            connected.add(target)
-        
-        networks = {}
-        bmcs = {}
-        for addr in connected:
-            bmcs[addr] = self.__bmcs[addr]
-            networks[urlparse(addr).netloc] = self.__configs[addr]
-        self.__networks = networks
-        self.__bmcs = bmcs
-        self.__configs = None
-
-        return btp_status
-
-    def query_status(self) -> NetworkStatus:
-        if self.__configs is not None:
-            return self.query_status_first()
-
-        btp_status: Dict[Tuple[str,str],LinkStatus] = {}
-        for addr, bmc in self.__bmcs.items():
-            links = bmc.get_links()
-            for link in links:
-                status = bmc.get_status(link)
-                btp_status[(addr,link)] = status
         return btp_status
 
     def apply_status(self, btp_status: NetworkStatus, now: Optional[datetime] = None) -> Tuple[bool, List[LinkEvent]]:
@@ -309,9 +279,7 @@ class Links:
                 rx_seq = btp_status[(target,source)].rx_seq
                 rx_height = btp_status[(target,source)].verifier.height
 
-            src_net = urlparse(source).netloc
-            dst_net = urlparse(target).netloc
-            link = self.get_link(src_net, dst_net)
+            link = self.get_link(source, target)
             change, events = link.update(tx_seq, rx_seq, tx_height, rx_height, now)
             if change:
                 status_change = True

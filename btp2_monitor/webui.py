@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from .types import NetworkID
 from .monitor import LinkEvent, Links
 from .storage import Log, Storage
 
@@ -20,12 +21,12 @@ REFRESH_INTERVAL = float(os.environ.get('REFRESH_INTERVAL', '30.0'))
 INITIAL_INTERVAL = 1.0
 
 class LinkID(TypedDict):
-    src: str
-    dst: str
+    src: NetworkID
+    dst: NetworkID
 
 class LinkInfo(TypedDict):
-    src: str
-    dst: str
+    src: NetworkID
+    dst: NetworkID
     src_name: str
     dst_name: str
     state: str
@@ -115,19 +116,22 @@ class MonitorBackend:
             if key in links or (key[1], key[0]) in links:
                 continue
             links.append(key)
-        return list(map(lambda key: { 'src': key[0], 'dst': key[1] }, links))
+        return list(map(lambda key: {
+             'src': NetworkID.from_address(key[0]),
+             'dst': NetworkID.from_address(key[1]),
+        }, links))
 
-    def get_network(self, id: str) -> dict:
-        return self.__links.get_network(id)
+    def get_network(self, id: NetworkID) -> dict:
+        return self.__links.get_network(id.address)
 
-    def get_link(self, src: str, dst: str) -> LinkInfo:
+    def get_link(self, src: NetworkID, dst: NetworkID) -> LinkInfo:
         if not self.__initialized:
             raise Exception('Unknown')
 
-        link = self.__links.get_link(src, dst)
+        link = self.__links.get_link(src.address, dst.address)
         return {
-            'src': link.src,
-            'dst': link.dst,
+            'src': NetworkID.from_address(link.src),
+            'dst': NetworkID.from_address(link.dst),
             'src_name': link.src_name,
             'dst_name': link.dst_name,
             'state': link.state,
@@ -144,8 +148,10 @@ class MonitorBackend:
         for log in logs:
             if 'src' in log:
                 log['src_name'] = be.__links.name_of(log['src'])
+                log['src'] = NetworkID.from_address(log['src'])
             if 'dst' in log:
                 log['dst_name'] = be.__links.name_of(log['dst'])
+                log['dst'] = NetworkID.from_address(log['dst'])
         return logs
 
     def term(self):
@@ -175,11 +181,11 @@ app.add_middleware(
 
 @app.get("/links/{src}/{dst}")
 async def getLinkInfo(src: str, dst: str) -> LinkInfo:
-    return be.get_link(src, dst)
+    return be.get_link(NetworkID(src), NetworkID(dst))
 
 @app.get('/network/{id}')
 async def getNetworkInfo(id: str) -> dict:
-    return be.get_network(id)
+    return be.get_network(NetworkID(id))
 
 @app.get("/links")
 async def getLinks() -> List[LinkID]:
