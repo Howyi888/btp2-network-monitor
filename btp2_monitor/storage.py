@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS logs (
         c.close()
         return row_id
 
-    def get_logs(self, src: Optional[str] = None, dst: Optional[str] = None, event: Optional[str] = None, limit: Optional[int] = None, start: Optional[int] = None, end: Optional[int] = None) -> List[Log]:
+    def get_logs(self, src: Optional[str] = None, dst: Optional[str] = None, event: Optional[str] = None, limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[Log]:
         conditions = []
         params = []
         order = 'DESC'
@@ -78,13 +78,13 @@ CREATE TABLE IF NOT EXISTS logs (
         if event is not None:
             conditions.append('event = ?')
             params.append(event)
-        if start is not None:
+        if after is not None:
             order = 'ASC'
-            conditions.append('sn >= ?')
-            params.append(start)
-        if end is not None:
+            conditions.append('sn > ?')
+            params.append(after)
+        if before is not None:
             conditions.append('sn < ?')
-            params.append(end)
+            params.append(before)
 
         if limit is None or limit > 100:
             limit = 100

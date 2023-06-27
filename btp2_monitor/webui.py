@@ -192,7 +192,7 @@ async def getLinks() -> List[LinkID]:
     return be.links
 
 @app.get("/events")
-async def getLogs(limit: Optional[int] = None, start: Optional[int] = None, end: Optional[int] = None) -> List[dict]:
-    return be.get_logs(start=start, limit=limit, end=end)
+async def getLogs(limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[dict]:
+    return be.get_logs(after=after, limit=limit, before=before)
 
 app.mount("/", StaticFiles(directory=DOCUMENT_ROOT, html=True), name="static")

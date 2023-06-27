@@ -82,7 +82,7 @@ const EventViewer = ({url}) => {
             });
         } else if (start < events[0].sn) {
             let params = [];
-            params.push('end='+events[0].sn);
+            params.push('before='+events[0].sn);
             let limit = events[0].sn - start;
             limit = limit > 100 ? 100 : limit;
             params.push('limit='+limit)
@@ -103,7 +103,7 @@ const EventViewer = ({url}) => {
             });
         } else {
             let params = [];
-            params.push('start='+(events[events.length-1].sn+1));
+            params.push('after='+(events[events.length-1].sn));
             loadEvents(params).then((data) => {
                 if (data.length > 0) {
                     // console.log("Append:",data);
