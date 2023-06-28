@@ -1,5 +1,6 @@
-import { ArrowForwardIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
+import { ArrowForwardIcon, ArrowUpDownIcon } from "@chakra-ui/icons";
+import { Badge, Box, Divider, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
+import { Menu, MenuButton, MenuList, Flex } from "@chakra-ui/react";
 import React, { useEffect, useRef, useState } from "react";
 import { strfdelta } from "../utils";
 
@@ -17,34 +18,42 @@ const COLOR_FOR = {
 
 function linkInfoForLog(log: Log) {
     return (
-        <Text>{log.src_name}<ArrowForwardIcon />{log.dst_name}</Text>
+        <>{log.src_name}<ArrowForwardIcon />{log.dst_name}</>
     );
 }
 
 const rowForLog = (log: Log) => {
     const ts = new Date(log.ts*1000);
-    let link = <Td></Td>;
-    let msg = <Td></Td>;
+    let message = null;
     const extra = JSON.parse(log.extra);
     if (log.event === 'tx') {
-        link = <Td>{linkInfoForLog(log)}</Td>
-        msg = <Td><Text>count={extra.count}</Text></Td>
+        message = <Td>
+            {linkInfoForLog(log)} : &nbsp;
+            <Badge size='sm' colorScheme="blue">TX</Badge> &bull;
+            COUNT={extra.count}
+        </Td>
     } else if (log.event === 'rx') {
-        link = <Td>{linkInfoForLog(log)}</Td>
-        msg = <Td><Text>count={extra.count} delay={strfdelta(extra.delta)}</Text></Td>
+        message = <Td>
+            {linkInfoForLog(log)} : &nbsp;
+            <Badge size='sm' colorScheme="blue">RX</Badge> &bull;
+            COUNT={extra.count} DELAY={strfdelta(extra.delta)}
+        </Td>
     } else if (log.event === 'state') {
-        link = <Td>{linkInfoForLog(log)}</Td>
-        msg = <Td><Badge size='sm' colorScheme={COLOR_FOR[extra.after]}>{extra.after.toUpperCase()}</Badge></Td>
+        message = <Td>
+            {linkInfoForLog(log)} : &nbsp;
+            <Badge size='sm' colorScheme={COLOR_FOR[extra.after]}>
+                {extra.after.toUpperCase()}
+            </Badge>
+        </Td>
     } else {
-        link = null
-        msg = <Td colSpan='2'>{String(extra)}</Td>
+        message = <Td>{String(extra)}</Td>;
     }
     return (
-        <Tr id={log.sn} key={log.sn}>
+        <Tr id={log.sn} key={log.sn} className={'row-'+log.event}>
             <Td isNumeric fontSize="xs">{log.sn}</Td>
             <Td>{ts.toLocaleString()}</Td>
             <Td>{log.event.toUpperCase()}</Td>
-            {link}{msg}
+            {message}
         </Tr>
     )
 }
@@ -123,17 +132,53 @@ const EventViewer = ({url}) => {
         requestUpdate(200);
     }, [events, start]);
 
+    const [ bodyClass, setBodyClass ] = useState('normal');
+    const [ showFlags, setShowFlags ] = useState(["log", "tx", "state"]);
+    useEffect(() => {
+        let classes = [];
+        if (!showFlags.includes('log')) {
+            classes.push('hide-log')
+        }
+        if (!showFlags.includes('tx')) {
+            classes.push('hide-tx')
+        }
+        if (!showFlags.includes('state')) {
+            classes.push('hide-state')
+        }
+        if (classes.length === 0) {
+            setBodyClass('normal')
+        } else {
+            let className = "";
+            classes.forEach((cls) => {
+                className += " "+cls;
+            })
+            setBodyClass(className.substring(1));
+        }
+    }, [showFlags])
+
+    const EventSelector = ({children}) => {
+        return <Menu>
+            <MenuButton as={Flex}>{children}</MenuButton>
+            <MenuList>
+            <MenuOptionGroup type="checkbox" value={showFlags} onChange={setShowFlags}>
+            <MenuItemOption value="log">LOG</MenuItemOption>
+            <MenuItemOption value="tx">TX</MenuItemOption>
+            <MenuItemOption value="state">STATE</MenuItemOption>
+            </MenuOptionGroup>
+            </MenuList>
+        </Menu>
+    }
+
     return (
-        <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto">
-        <Table size="sm">
+        <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto" className="event-viewer">
+        <Table size="sm" className="event-log">
         <Thead position="sticky" top="0"><Tr ref={topLine} bg="gray.200">
-            <Th width="5em">SN</Th>
-            <Th width="20em">Time</Th>
-            <Th width="5em">Event</Th>
-            <Th width="20em">Link</Th>
-            <Th>Extra</Th>
+            <Th>SN</Th>
+            <Th>Time</Th>
+            <Th><EventSelector>Event&bull;<ArrowUpDownIcon /></EventSelector></Th>
+            <Th>Message</Th>
         </Tr></Thead>
-        <Tbody>
+        <Tbody className={bodyClass}>
         { start > 1 &&
             <Tr><Td colSpan="5" textAlign="center" padding="0px">
                 <Text onClick={()=>{setStart(start>100 ? start-100 : 1)}} fontSize="7px">...LOAD PREVIOUS...</Text>

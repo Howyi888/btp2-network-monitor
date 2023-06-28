@@ -55,3 +55,32 @@ body > #root > div {
   overflow-x: hidden;
   width: 50%;
 }
+
+table.event-log tr > td {
+  white-space: nowrap;
+  overflow-x: hidden;
+}
+
+table.event-log tr > :nth-child(1), table.event-log tr > :nth-child(3) {
+  text-align: center;
+}
+
+.event-log .hide-log > .row-log {
+  display: none;
+  visibility: hidden;
+}
+
+.event-log .hide-tx > .row-tx {
+  display: none;
+  visibility: hidden;
+}
+
+.event-log .hide-tx > .row-rx {
+  display: none;
+  visibility: hidden;
+}
+
+.event-log .hide-state > .row-state {
+  display: none;
+  visibility: hidden;
+}
