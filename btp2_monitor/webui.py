@@ -30,12 +30,12 @@ class LinkInfo(TypedDict):
     src_name: str
     dst_name: str
     state: str
-    tx_seq: int
-    rx_seq: int
-    tx_height: int
-    rx_height: int
-    pending_count: int
-    pending_delay: float
+    tx_seq: Optional[int]
+    rx_seq: Optional[int]
+    tx_height: Optional[int]
+    rx_height: Optional[int]
+    pending_count: Optional[int]
+    pending_delay: Optional[float]
 
 class NetworkInfo(TypedDict):
     network: str
@@ -46,9 +46,9 @@ class MonitorBackend:
     def __init__(self):
         with open(NETWORKS_JSON, 'rb') as fd:
             network_json = json.load(fd)
-        self.__links = Links(network_json)
-        self.__initialized = False
         self.__storage = Storage(STORAGE_URL)
+        self.__links = Links(network_json, self.__storage)
+        self.__initialized = False
         self.__stopped = False
         self.try_update()
 
@@ -107,12 +107,11 @@ class MonitorBackend:
         self.__timer = Timer(REFRESH_INTERVAL, self.try_update)
         self.__timer.start()
 
-    @property
-    def links(self) -> List[LinkID]:
+    def get_links(self) -> List[LinkID]:
         links = []
         if not self.__initialized:
             return links
-        for key in self.__links.keys():
+        for key in self.__links.get_connected_links():
             if key in links or (key[1], key[0]) in links:
                 continue
             links.append(key)
@@ -189,7 +188,7 @@ async def getNetworkInfo(id: str) -> dict:
 
 @app.get("/links")
 async def getLinks() -> List[LinkID]:
-    return be.links
+    return be.get_links()
 
 @app.get("/events")
 async def getLogs(limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[dict]:

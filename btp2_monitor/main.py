@@ -1,6 +1,6 @@
 
 import json
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import click
@@ -8,16 +8,20 @@ import requests
 
 from .cui import MonitorApp
 from .monitor import Link, LinkEvent, Links, merge_status, strfdelta
+from .storage import Storage
 
 KEY_LINKS = 'links'
 
 @click.group()
 @click.option('--networks', metavar='<networks.json>')
+@click.option('--storage_url', type=str, envvar="STORAGE_URL")
 @click.pass_context
-def main(ctx: click.Context, networks: str):
+def main(ctx: click.Context, networks: str, storage_url: Optional[str] = None):
     with open(networks, 'rb') as fd:
         network_json = json.load(fd)
-    links = Links(network_json)
+
+    storage = storage_url and Storage(storage_url)
+    links = Links(network_json, storage)
 
     ctx.ensure_object(dict)
     ctx.obj[KEY_LINKS] = links
@@ -55,7 +59,7 @@ def build_blocks_for_slack(links: Links, link_status: Dict[Tuple[str,str],List[L
 
 @main.command('monitor')
 @click.pass_obj
-@click.option('--interval', type=click.INT, default=30)
+@click.option('--interval', type=click.INT, default=30.0, envvar="REFRESH_INTERVAL")
 @click.option('--slack_hook', type=str, envvar='SLACK_HOOK')
 @click.option('--slack_channel', type=str, envvar='SLACK_CHANNEL')
 @click.option('--log_file', type=str, envvar="LOG_FILE")
@@ -99,13 +103,22 @@ def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_
 def show_status(obj: dict):
     links: Links = obj[KEY_LINKS]
     btp_status = links.query_status()
-    link_status = merge_status(btp_status)
+    known_links = btp_status.get_known_links()
+
+    connected: list[tuple[src,src]] = []
+    for link in known_links:
+        rlink = (link[1], link[0])
+        if rlink in known_links and rlink not in connected:
+            connected.append(link)
+
     click.secho(f'| {"Network":^44s} | {"FW Pending":^10s} | {"BW Pending":^10s} |',reverse=True)
-    for conn, sl in link_status.items():
-        fw_pending = sl[0].tx_seq - sl[1].rx_seq
-        bw_pending = sl[1].tx_seq - sl[0].rx_seq
-        src_name = links.name_of(urlparse(conn[0]).netloc)
-        dst_name = links.name_of(urlparse(conn[1]).netloc)
+    for conn in connected:
+        fw = btp_status.get_link_update(conn[0], conn[1])
+        bw = btp_status.get_link_update(conn[1], conn[0])
+        fw_pending = fw.tx_seq - fw.rx_seq
+        bw_pending = bw.tx_seq - bw.rx_seq
+        src_name = links.name_of(conn[0])
+        dst_name = links.name_of(conn[1])
         click.echo(f'| {src_name:>20s} -> {dst_name:<20s} | {fw_pending:10d} | {bw_pending:10d} |')
 
 @main.command('web')

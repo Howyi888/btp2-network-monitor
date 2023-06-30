@@ -71,7 +71,7 @@ class MonitorApp(App):
     def compose(self) -> ComposeResult:
         yield Header(name='BTP2 Network Monitor')
         entries: Dict[Tuple[str,str], StatusEntry] = {}
-        for conn in self.__links.keys():
+        for conn in self.__links.get_connected_links():
             if conn in entries or (conn[1], conn[0]) in entries:
                 continue
             entries[conn] = StatusEntry(self.__links, conn)
