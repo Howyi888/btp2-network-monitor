@@ -61,8 +61,16 @@ table.event-log tr > td {
   overflow-x: hidden;
 }
 
+table.event-log tr > th {
+  white-space: nowrap;
+}
+
 table.event-log tr > :nth-child(1), table.event-log tr > :nth-child(3) {
   text-align: center;
+}
+
+table.event-log tr > :last-child {
+  width: 100%;
 }
 
 .event-log .hide-log > .row-log {
