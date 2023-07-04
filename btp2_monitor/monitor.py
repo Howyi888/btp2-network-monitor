@@ -453,7 +453,7 @@ class Links:
     def get_link(self, src: str, dst: str) -> Link:
         key = (src, dst)
         if key not in self.__links:
-            time_limit = self.get_rx_limit(src)+self.get_tx_limit(dst)
+            time_limit = self.get_tx_limit(src)+self.get_rx_limit(dst)
             src_name = self.name_of(src)
             dst_name = self.name_of(dst)
             self.__links[key] = Link(self.__storage, src, dst, time_limit, src_name=src_name, dst_name=dst_name)
