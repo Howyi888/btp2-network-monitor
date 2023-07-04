@@ -12,17 +12,25 @@ network informations.
 
 **Network Information**
 
-| Name       | Type    | Optional | Description                                        |
-|:-----------|:--------|:--------:|:---------------------------------------------------|
-| `type`     | string  |          | Network type (`eth`, `icon`)                       |
-| `endpoint` | string  |          | End-point URL for RPC                              |
-| `network`  | string  |          | BTP Network Address for the network                |
-| `name`     | string  |   YES    | Name of the network to use in UI                   |
-| `bmc`      | string  |          | Contract address of the BMC                        |
-| `bmcm`     | string  |   YES    | Contract address of the BMC Management             |
-| `bmcs`     | string  |   YES    | Contract address of the BMC Service                |
-| `tx_limit` | integer |   YES    | Time limit to get query result after sending TX    |
-| `rx_limit` | integer |   YES    | Time limit to wait for finality after qeury result |
+| Name       | Type    | Optional | Description                                         |
+|:-----------|:--------|:--------:|:----------------------------------------------------|
+| `type`     | string  |          | Network type (`eth`, `icon`)                        |
+| `endpoint` | string  |          | End-point URL for RPC                               |
+| `network`  | string  |          | BTP Network Address for the network                 |
+| `name`     | string  |   YES    | Name of the network to use in UI                    |
+| `bmc`      | string  |          | Contract address of the BMC                         |
+| `bmcm`     | string  |   YES    | Contract address of the BMC Management              |
+| `bmcs`     | string  |   YES    | Contract address of the BMC Service                 |
+| `rx_limit` | integer |   YES    | Time limit to receive message after the transaction |
+| `tx_limit` | integer |   YES    | Time limit to get finality to transmit message      |
+
+So, estimated time limit after sending TX to send a message is sum of the followings.
+* `rx_limit` of source chain : to request message delivery with user's transaction 
+* `tx_limit` of source chain : to confirm message delivery request on the source.
+* `rx_limit` of destination chain : to receive message by relay's transaction
+
+It's estimated time limit. So sometimes it can't shorten or extended by network condition.
+It assumes that the network has a problem if it exceeds.
 
 **Example**
 ```json
@@ -33,7 +41,7 @@ network informations.
         "network": "0x7.icon",
         "name": "ICON Berlin",
         "bmc": "cxf1b0808f09138fffdb890772315aeabb37072a8a",
-        "tx_limit": 4
+        "rx_limit": 4
     },
     {
         "type": "icon",
@@ -41,7 +49,7 @@ network informations.
         "network": "0x111.icon",
         "name": "HAVAH BTP",
         "bmc": "cx683a92f72cc2fe9a7a617019a8d6fcba6b6c06b7",
-        "tx_limit": 4
+        "rx_limit": 4
     }
 ]
 ```
