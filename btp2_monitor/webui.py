@@ -87,7 +87,7 @@ class MonitorBackend:
         if not self.__initialized:
             self.__initialized = True
             self.write_log(now, '', '', 'log', 'START')
-        else:
+        if len(changes) > 0:
             events = []
             for c in changes:
                 extra = None
