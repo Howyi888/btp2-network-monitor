@@ -75,7 +75,7 @@ def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_
                 if c.after == Link.GOOD:
                     items.append(f'{link_str} : :large_green_circle: *GOOD*')
                 else:
-                    items.append(f'{link_str} : :red_circle: *BAD*')
+                    items.append(f'{link_str} : :red_circle: *{c.after.upper()}*')
             change_text = "\n".join(items)
             link_status = merge_status(links)
             blocks = build_blocks_for_slack(links, link_status)
@@ -105,7 +105,7 @@ def show_status(obj: dict):
     btp_status = links.query_status()
     known_links = btp_status.get_known_links()
 
-    connected: list[tuple[src,src]] = []
+    connected: list[tuple[str,str]] = []
     for link in known_links:
         rlink = (link[1], link[0])
         if rlink in known_links and rlink not in connected:
