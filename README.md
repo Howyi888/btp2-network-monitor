@@ -105,7 +105,7 @@ Then checkout the source with git or other tools.
 Then enter the directory then continue.
 
 ```shell
-docker build -t btp2-monitor .
+./build.sh
 ```
 
 ## WebUI Usage

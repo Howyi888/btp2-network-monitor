@@ -1,3 +1,4 @@
+ARG MONITOR_VERSION
 FROM node:18 as web
 COPY ./web /web
 WORKDIR /web
@@ -15,5 +16,6 @@ VOLUME [ "/app/data" ]
 ENV NETWORKS_JSON="/app/data/networks.json"
 ENV DOCUMENT_ROOT="/app/html"
 ENV STORAGE_URL="/app/data/storage.db"
+ENV MONITOR_VERSION=${MONITOR_VERSION}
 EXPOSE 8000
 CMD [ "uvicorn", "btp2_monitor.webui:app", "--port", "8000",  "--host", ""]

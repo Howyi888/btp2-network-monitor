@@ -18,6 +18,7 @@ NETWORKS_JSON = os.environ.get('NETWORKS_JSON', 'networks.json')
 DOCUMENT_ROOT = os.environ.get('DOCUMENT_ROOT', "web/build/")
 STORAGE_URL = os.environ.get('STORAGE_URL', ':memory:')
 REFRESH_INTERVAL = float(os.environ.get('REFRESH_INTERVAL', '30.0'))
+MONITOR_VERSION = os.environ.get('MONITOR_VERSION', 'unknown')
 INITIAL_INTERVAL = 1.0
 
 class LinkID(TypedDict):
@@ -177,6 +178,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins = ["*"]
 )
+
+@app.get("/version")
+async def getVersion() -> str:
+    return MONITOR_VERSION
 
 @app.get("/links/{src}/{dst}")
 async def getLinkInfo(src: str, dst: str) -> LinkInfo:
