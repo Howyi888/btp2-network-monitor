@@ -1,4 +1,3 @@
-ARG MONITOR_VERSION
 FROM node:18 as web
 COPY ./web /web
 WORKDIR /web
@@ -7,6 +6,7 @@ RUN npm install
 RUN npm run build
 
 FROM python:3.10-alpine
+ARG MONITOR_VERSION
 COPY ./btp2_monitor /app/btp2_monitor
 COPY ./requirements.txt /app/requirements.txt
 WORKDIR /app
