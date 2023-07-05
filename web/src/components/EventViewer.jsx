@@ -84,6 +84,7 @@ const EventViewer = ({url}) => {
                 if (data.length > 0) {
                     setEvents(data.reverse());
                     setStart(data[0].sn);
+                    lastLine.current.scrollIntoView({behavior: 'smooth'});
                 }
                 requestUpdate(10000);
             }).catch(() => {
