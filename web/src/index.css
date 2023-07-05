@@ -28,7 +28,7 @@ body > #root > div {
 }
 
 .delivering {
-  color: red;
+  color: var(--chakra-colors-red);
 }
 
 .link-line {
@@ -43,6 +43,15 @@ body > #root > div {
   display: inline-block;
   border-radius: 6px;
   border-width: 1px;
+  border-color: var(--chakra-colors-gray-400);
+}
+
+.link-info .link-header {
+  vertical-align: middle;
+}
+
+.link-header .network-name {
+  cursor: pointer;
 }
 
 .link-description {

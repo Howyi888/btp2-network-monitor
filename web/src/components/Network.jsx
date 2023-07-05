@@ -1,3 +1,4 @@
+import { InfoIcon } from "@chakra-ui/icons";
 import {
     Heading,
     Popover, PopoverArrow, PopoverBody,
@@ -42,9 +43,11 @@ const NetworkInfo = ({url, id, name}) =>  {
 
     return (
         <Popover isLazy="true" preventOverflow="true" boundary="scrollParent"
-            initialFocusRef={initialFocus} id="network-name">
-            <PopoverTrigger><Heading size="sm">{name}</Heading></PopoverTrigger>
-            <PopoverContent width="auto" id='network-info' borderColor="gray.400" marginLeft="6px">
+            initialFocusRef={initialFocus}>
+            <PopoverTrigger>
+            <Heading size="sm" className="network-name">{name}</Heading>
+            </PopoverTrigger>
+            <PopoverContent width="auto" className='network-info' borderColor="gray.400" marginLeft="6px">
                 <PopoverArrow bg="gray.300" />
                 <PopoverCloseButton ref={initialFocus} />
                 <PopoverHeader bg="gray.200">

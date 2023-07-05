@@ -1,5 +1,5 @@
 import { ArrowForwardIcon, RepeatIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, Flex, IconButton, Tooltip } from "@chakra-ui/react";
+import { Badge, Box, Divider, Flex, HStack, IconButton, Tooltip } from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { strfdelta } from "../utils";
@@ -46,15 +46,15 @@ const Link = ({url, link}) => {
     }
 
     return (
-        <Box p="2" className="link-info" borderColor="gray.400">
-        <Flex>
-            <Flex flex="1" overflowX="hidden" mr="10px">
+        <Box p="2" className="link-info">
+        <Flex className="link-header">
+            <HStack flex="1" overflowX="hidden" mr="10px">
             <NetworkInfo url={url} id={status.src} name={status.src_name} />
             &nbsp;
-            <ArrowForwardIcon margin="0.3" />
+            <ArrowForwardIcon />
             &nbsp;
             <NetworkInfo url={url} id={status.dst} name={status.dst_name} />
-            </Flex>
+            </HStack>
             {status.tx_seq > status.rx_seq && <Flex className="delivering">Delivering<IconButton size="xs" margin="2px" isLoading="true" /></Flex>}
             <IconButton margin="2px" size="xs" onClick={updateStatus} isLoading={statusQuery.isLoading} icon={<RepeatIcon />} />
         </Flex>
