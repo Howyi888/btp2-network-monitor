@@ -129,6 +129,8 @@ docker run -it -d --name btp2-monitor \
 
 Then bring up your browser, then enter URL `http://localhost:<my_port>`
 
+For OpenAPIs, use `http://localhost:<my_port>/docs`.
+
 ## WebUI developer usage
 
 You can start local server for debug. It automatically updates

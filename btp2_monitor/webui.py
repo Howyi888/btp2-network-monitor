@@ -9,6 +9,7 @@ from typing import List, Optional, TypedDict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.openapi.utils import get_openapi
 
 from .types import NetworkID
 from .monitor import LinkEvent, Links
@@ -183,6 +184,10 @@ app.add_middleware(
 async def getVersion() -> str:
     return MONITOR_VERSION
 
+@app.get("/links")
+async def getLinks() -> List[LinkID]:
+    return be.get_links()
+
 @app.get("/links/{src}/{dst}")
 async def getLinkInfo(src: str, dst: str) -> LinkInfo:
     return be.get_link(NetworkID(src), NetworkID(dst))
@@ -191,12 +196,30 @@ async def getLinkInfo(src: str, dst: str) -> LinkInfo:
 async def getNetworkInfo(id: str) -> dict:
     return be.get_network(NetworkID(id))
 
-@app.get("/links")
-async def getLinks() -> List[LinkID]:
-    return be.get_links()
-
 @app.get("/events")
 async def getLogs(limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[dict]:
     return be.get_logs(after=after, limit=limit, before=before)
 
 app.mount("/", StaticFiles(directory=DOCUMENT_ROOT, html=True), name="static")
+
+
+def get_openapi_schema():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    schema = get_openapi(
+        title="BTP2 Network Status Monitor APIs",
+        version=MONITOR_VERSION,
+        routes=app.routes,
+        description="""
+Use `/links` to get a list of links.
+Use `/links/{src}/{dst}` to get link status of the specific link.
+Use `/network/{id}` to get network information of the network.
+Use `/events` to get a list of events.
+"""
+    )
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = get_openapi_schema
