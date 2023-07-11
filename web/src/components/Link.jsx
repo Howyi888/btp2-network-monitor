@@ -1,5 +1,5 @@
 import { ArrowForwardIcon, RepeatIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, Flex, HStack, IconButton, Tooltip } from "@chakra-ui/react";
+import { Badge, Box, Divider, Flex, HStack, Heading, IconButton, Tooltip } from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { strfdelta } from "../utils";
@@ -37,7 +37,11 @@ const Link = ({url, link}) => {
     });
 
     if (!statusQuery.isFetched) {
-        return (<p>Loading</p>)
+        return <Box p="2" className="link-info">
+            <Flex className="link-header">
+                <Heading size="sm">Loading</Heading>
+            </Flex>
+        </Box>
     }
 
     const status = statusQuery.data;

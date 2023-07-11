@@ -65,6 +65,11 @@ body > #root > div {
   width: 50%;
 }
 
+.event-viewer >  .loading-icon {
+  position: absolute;
+  z-index: 100;
+}
+
 table.event-log tr > td {
   white-space: nowrap;
   overflow-x: hidden;
@@ -100,4 +105,9 @@ table.event-log tr > :last-child {
 .event-log .hide-state > .row-state {
   display: none;
   visibility: hidden;
+}
+
+.event-log .top-line {
+  font-size: 7px;
+  cursor: pointer;
 }

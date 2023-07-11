@@ -1,5 +1,5 @@
 import { ArrowForwardIcon, ArrowUpDownIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
+import { Badge, Box, Divider, MenuItemOption, MenuOptionGroup, Spinner, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
 import { Menu, MenuButton, MenuList, Flex } from "@chakra-ui/react";
 import React, { useEffect, useRef, useState } from "react";
 import { strfdelta } from "../utils";
@@ -59,8 +59,10 @@ const rowForLog = (log: Log) => {
 }
 
 const EventViewer = ({url}) => {
-    const [events, setEvents] = useState([])
+    const [events, setEvents] = useState([]);
     const [start, setStart] = useState(null);
+    const [current, setCurrent] = useState(Date.now());
+    const [isLoading, setLoading] = useState(false);
     const timer = useRef(null);
     const lastLine = useRef(null);
     const topLine = useRef(null);
@@ -69,7 +71,10 @@ const EventViewer = ({url}) => {
         if (timer.current) {
             clearTimeout(timer.current);
         }
-        timer.current = setTimeout(updateEvents, timeout)
+        timer.current = setTimeout(() => {
+            timer.current = null;
+            setCurrent(Date.now());
+        }, timeout)
     }
 
     const loadEvents = async (params: String[]) => {
@@ -78,19 +83,23 @@ const EventViewer = ({url}) => {
         return data;
     }
 
-    const updateEvents = () => {
+    useEffect(() => {
+        if (isLoading) return;
+        setLoading(true);
         if (events.length===0) {
             loadEvents([]).then((data) => {
                 if (data.length > 0) {
                     setEvents(data.reverse());
-                    setStart(data[0].sn);
-                    lastLine.current.scrollIntoView({behavior: 'smooth'});
+                    lastLine.current.scrollIntoView();
+                } else {
+                    requestUpdate(10000);
                 }
-                requestUpdate(10000);
             }).catch(() => {
                 requestUpdate(10000);
+            }).finally(() => {
+                setLoading(false);
             });
-        } else if (start < events[0].sn) {
+        } else if (start !== null && start < events[0].sn) {
             let params = [];
             params.push('before='+events[0].sn);
             let limit = events[0].sn - start;
@@ -99,10 +108,9 @@ const EventViewer = ({url}) => {
             loadEvents(params).then((data) => {
                 if (data.length > 0) {
                     data.reverse();
-                    events.forEach(event => {
-                        data.push(event);
-                    });
-                    setEvents(data);
+                    setEvents((events) => {
+                        return data.concat(events);
+                    })
                     topLine.current.scrollIntoView({behavior: 'smooth'});
                 } else {
                     setStart(events[0].sn);
@@ -110,24 +118,28 @@ const EventViewer = ({url}) => {
                 }
             }).catch(()=> {
                 requestUpdate(10000);
+            }).finally(() => {
+                setLoading(false);
             });
         } else {
             let params = [];
             params.push('after='+(events[events.length-1].sn));
             loadEvents(params).then((data) => {
                 if (data.length > 0) {
-                    // console.log("Append:",data);
-                    const new_data = events.concat(data);
-                    setEvents(new_data);
+                    setEvents((events) => {
+                        return events.concat(data)
+                    })
                     lastLine.current.scrollIntoView({behavior: 'smooth'});
                 } else {
                     requestUpdate(10000);
                 }
             }).catch(()=>{
                 requestUpdate(10000);
+            }).finally(() => {
+                setLoading(false);
             });
         }
-    }
+    }, [current]);
 
     useEffect(() => {
         requestUpdate(200);
@@ -171,7 +183,7 @@ const EventViewer = ({url}) => {
     }
 
     return (
-        <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto" className="event-viewer">
+        <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto" class="event-viewer">
         <Table size="sm" className="event-log">
         <Thead position="sticky" top="0"><Tr ref={topLine} bg="gray.200">
             <Th>SN</Th>
@@ -180,13 +192,13 @@ const EventViewer = ({url}) => {
             <Th>Message</Th>
         </Tr></Thead>
         <Tbody className={bodyClass}>
-        { start > 1 &&
-            <Tr><Td colSpan="5" textAlign="center" padding="0px">
-                <Text onClick={()=>{setStart(start>100 ? start-100 : 1)}} fontSize="7px">...LOAD PREVIOUS...</Text>
+        { events.length > 0 && events[0].sn > 1 &&
+            <Tr><Td colSpan="5" textAlign="center" padding="0px" className="top-line">
+                <Text onClick={()=>{setStart(events[0].sn>100 ? events[0].sn-100 : 1)}}>...LOAD PREVIOUS...</Text>
             </Td></Tr>
         }
         {events.map((item: Log) => rowForLog(item))}
-        <Tr><Td colSpan="5" ref={lastLine} textAlign="center" padding="0px"><Divider /></Td></Tr>
+        <Tr><Td colSpan="5" ref={lastLine} textAlign="center" padding="0px" className="bottom-line"><Divider /></Td></Tr>
         </Tbody>
         </Table>
         </Box>
