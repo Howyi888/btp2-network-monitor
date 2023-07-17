@@ -1,5 +1,5 @@
 import { ArrowForwardIcon, ArrowUpDownIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, MenuItemOption, MenuOptionGroup, Spinner, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
+import { Badge, Box, Divider, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
 import { Menu, MenuButton, MenuList, Flex } from "@chakra-ui/react";
 import React, { useEffect, useRef, useState } from "react";
 import { strfdelta } from "../utils";
@@ -62,10 +62,11 @@ const EventViewer = ({url}) => {
     const [events, setEvents] = useState([]);
     const [start, setStart] = useState(null);
     const [current, setCurrent] = useState(Date.now());
-    const [isLoading, setLoading] = useState(false);
+    const isLoading = useRef(false);
     const timer = useRef(null);
     const lastLine = useRef(null);
     const topLine = useRef(null);
+    const range = useRef(null);
 
     const requestUpdate = (timeout) => {
         if (timer.current) {
@@ -77,17 +78,17 @@ const EventViewer = ({url}) => {
         }, timeout)
     }
 
-    const loadEvents = async (params: String[]) => {
+    const loadEvents = async (url: String, params: String[]) => {
         const res = await fetch(url+'/events'+(params.length>0?'?'+params.join('&'):''));
         const data: Log[] = await res.json();
         return data;
     }
 
     useEffect(() => {
-        if (isLoading) return;
-        setLoading(true);
-        if (events.length===0) {
-            loadEvents([]).then((data) => {
+        if (isLoading.current) return;
+        isLoading.current = true
+        if (range.current === null) {
+            loadEvents(url, []).then((data) => {
                 if (data.length > 0) {
                     setEvents(data.reverse());
                     lastLine.current.scrollIntoView();
@@ -97,15 +98,15 @@ const EventViewer = ({url}) => {
             }).catch(() => {
                 requestUpdate(10000);
             }).finally(() => {
-                setLoading(false);
+                isLoading.current = false;
             });
-        } else if (start !== null && start < events[0].sn) {
+        } else if (start !== null && start < range.current.first) {
             let params = [];
-            params.push('before='+events[0].sn);
-            let limit = events[0].sn - start;
+            params.push('before='+range.current.first);
+            let limit = range.current.first - start;
             limit = limit > 100 ? 100 : limit;
             params.push('limit='+limit)
-            loadEvents(params).then((data) => {
+            loadEvents(url, params).then((data) => {
                 if (data.length > 0) {
                     data.reverse();
                     setEvents((events) => {
@@ -113,18 +114,18 @@ const EventViewer = ({url}) => {
                     })
                     topLine.current.scrollIntoView({behavior: 'smooth'});
                 } else {
-                    setStart(events[0].sn);
+                    setStart(range.current.first);
                     requestUpdate(10000);
                 }
             }).catch(()=> {
                 requestUpdate(10000);
             }).finally(() => {
-                setLoading(false);
+                isLoading.current = false;
             });
         } else {
             let params = [];
-            params.push('after='+(events[events.length-1].sn));
-            loadEvents(params).then((data) => {
+            params.push('after='+range.current.last);
+            loadEvents(url, params).then((data) => {
                 if (data.length > 0) {
                     setEvents((events) => {
                         return events.concat(data)
@@ -136,14 +137,20 @@ const EventViewer = ({url}) => {
             }).catch(()=>{
                 requestUpdate(10000);
             }).finally(() => {
-                setLoading(false);
+                isLoading.current = false;
             });
         }
-    }, [current]);
+    }, [current, url, start]);
 
     useEffect(() => {
         requestUpdate(200);
-    }, [events, start]);
+        if (events.length >0) {
+            range.current = {
+                first: events[0].sn,
+                last: events[events.length-1].sn
+            };
+        }
+    }, [events]);
 
     const [ bodyClass, setBodyClass ] = useState('normal');
     const [ showFlags, setShowFlags ] = useState(["log", "tx", "state"]);
