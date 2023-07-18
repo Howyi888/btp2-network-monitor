@@ -34,3 +34,16 @@ class BMCWithICONRPC(types.BMC):
                 .to(self.__bmc)
                 .method('getLinks')
                 .build())
+
+    def get_routes(self) -> dict[str,str]:
+        return self.__service.call(CallBuilder()
+                .to(self.__bmc)
+                .method('getRoutes')
+                .build())
+
+    def get_fee(self, _to: str,  _response: bool) -> int:
+        return int(self.__service.call(CallBuilder()
+                .to(self.__bmc)
+                .method('getFee')
+                .params({ '_to':_to, '_response': _response})
+                .build()), 0)

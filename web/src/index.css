@@ -65,6 +65,34 @@ body > #root > div {
   width: 50%;
 }
 
+table.fee-table tr > :nth-child(2), table.fee-table tr > :nth-child(3) {
+  text-align: right;
+}
+
+table.fee-table tr > td {
+  white-space: nowrap;
+  background-color: white;
+  overflow-x: hidden;
+}
+
+table.fee-table tr > td > .value > span:nth-child(2) > span:nth-child(-n+3) {
+  margin-right: 0.15em;
+}
+
+table.fee-table tr > td > .value > span:nth-child(2) > span:nth-child(n+4) {
+  color: var(--chakra-colors-gray-400);
+  font-size: 7px;
+}
+
+table.fee-table tr > td > .symbol {
+  font-size: 8px;
+  font-weight: bold;
+  color: var(--chakra-colors-gray-600);
+  border-radius: 3px;
+  border: 1px solid;
+  padding: 2px;
+}
+
 .event-viewer >  .loading-icon {
   position: absolute;
   z-index: 100;

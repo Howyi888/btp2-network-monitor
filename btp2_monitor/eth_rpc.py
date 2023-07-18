@@ -29,3 +29,9 @@ class BMCWithEthereumRPC(types.BMC):
 
     def get_links(self) -> Tuple[str]:
         return tuple(self.__management.functions.getLinks().call())
+
+    def get_routes(self) -> dict[str,str]:
+        return dict(self.__management.functions.getRoutes().call())
+
+    def get_fee(self, dst: str, rollback: bool) -> int:
+        return self.__periphery.functions.getFee(dst, rollback).call()

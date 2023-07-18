@@ -4,7 +4,7 @@
 import json
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
-from typing import Tuple
+from typing import Tuple, TypedDict, Union
 from urllib.parse import urlparse
 
 
@@ -28,19 +28,6 @@ class VerifierStatus(tuple):
 
     def __str__(self) -> str:
         return f'VerifierStatus(height={self.height},extra={self.extra.hex()})'
-
-class NetworkID (str):
-    @staticmethod
-    def from_address(addr: str) -> 'NetworkID':
-        url = urlparse(addr)
-        return NetworkID(f'{url.netloc}-{url.path[1:]}')
-
-    @property
-    def address(self) -> str:
-        items = self.split('-')
-        if len(items) != 2:
-            raise Exception(f'invalid network id(id={self})')
-        return f'btp://{items[0]}/{items[1]}'
 
 class LinkStatus(tuple):
     def __new__(cls, __iterable: Iterable = ...) -> 'LinkStatus':
@@ -77,6 +64,17 @@ class LinkStatus(tuple):
     def __str__(self) -> str:
         return f'LinkStatus(rx_seq={self.rx_seq},tx_seq={self.tx_seq},verifier={self.verifier},current_height={self.current_height})'
 
+class FeeEntry(TypedDict):
+    id: str
+    name: str
+    fees: list[int]
+
+
+class FeeTable(TypedDict):
+    decimal: int
+    symbol: str
+    table: list[FeeEntry]
+
 
 class BMC(metaclass=ABCMeta):
     @property
@@ -90,4 +88,8 @@ class BMC(metaclass=ABCMeta):
 
     @abstractmethod
     def get_links(self) -> Tuple[str]:
+        pass
+
+    @abstractmethod
+    def get_routes(self) -> dict[str,str]:
         pass

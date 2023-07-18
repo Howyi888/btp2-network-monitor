@@ -4,14 +4,14 @@ import json
 import os
 from threading import Timer
 import traceback
-from typing import List, Optional, TypedDict
+from typing import List, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 
-from .types import NetworkID
+from .webui_types import FeeTableJSON, NetworkID, LinkID, LinkInfo
 from .monitor import LinkEvent, Links
 from .storage import Log, Storage
 
@@ -22,27 +22,6 @@ REFRESH_INTERVAL = float(os.environ.get('REFRESH_INTERVAL', '30.0'))
 MONITOR_VERSION = os.environ.get('MONITOR_VERSION', 'unknown')
 INITIAL_INTERVAL = 1.0
 
-class LinkID(TypedDict):
-    src: NetworkID
-    dst: NetworkID
-
-class LinkInfo(TypedDict):
-    src: NetworkID
-    dst: NetworkID
-    src_name: str
-    dst_name: str
-    state: str
-    tx_seq: Optional[int]
-    rx_seq: Optional[int]
-    tx_height: Optional[int]
-    rx_height: Optional[int]
-    pending_count: Optional[int]
-    pending_delay: Optional[float]
-
-class NetworkInfo(TypedDict):
-    network: str
-    bmc: str
-    endpoint: str
 
 class MonitorBackend:
     def __init__(self):
@@ -52,6 +31,7 @@ class MonitorBackend:
         self.__links = Links(network_json, self.__storage)
         self.__initialized = False
         self.__stopped = False
+        self.__relay_fee_table: dict[NetworkID,tuple[datetime,FeeTableJSON]] = {}
         self.try_update()
 
     @property
@@ -155,6 +135,23 @@ class MonitorBackend:
                 log['dst'] = NetworkID.from_address(log['dst'])
         return logs
 
+    def get_fee_table(self, id: NetworkID, refresh: Optional[bool] = False) -> FeeTableJSON:
+        if self.__stopped:
+            return None
+        now = datetime.now()
+        if id in self.__relay_fee_table and not refresh:
+            ts, table = self.__relay_fee_table[id]
+            if (now-ts).total_seconds() >= REFRESH_INTERVAL:
+                self.__relay_fee_table[id] = (now, table)
+                timer = Timer(0.1, self.get_fee_table, [id, True])
+                timer.start()
+            return table
+        table = self.__links.get_relay_fee_table(id.address)
+        for e in table['table']:
+            e['fees'] = list(map(lambda x: str(x), e['fees']))
+        self.__relay_fee_table[id] = (now, table)
+        return table
+
     def term(self):
         if self.__stopped:
             return
@@ -195,6 +192,10 @@ async def getLinkInfo(src: str, dst: str) -> LinkInfo:
 @app.get('/network/{id}')
 async def getNetworkInfo(id: str) -> dict:
     return be.get_network(NetworkID(id))
+
+@app.get('/network/{id}/feetable')
+async def getFeeTable(id: str) -> FeeTableJSON:
+    return be.get_fee_table(NetworkID(id))
 
 @app.get("/events")
 async def getLogs(limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[dict]:

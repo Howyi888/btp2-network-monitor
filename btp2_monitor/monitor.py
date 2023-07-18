@@ -8,11 +8,16 @@ from .storage import ConnectionState, Storage, TXRecord, new_connection_state
 
 from .eth_rpc import BMCWithEthereumRPC
 from .icon_rpc import BMCWithICONRPC
-from .types import BMC, LinkStatus
+from .types import BMC, LinkStatus, FeeTable
 
 BMC_FACTORY = {
     'icon': BMCWithICONRPC,
     'eth': BMCWithEthereumRPC,
+}
+
+COIN_BY_TYPE = {
+    'icon': 'ICX',
+    'eth': 'ETH',
 }
 
 def build_proxy(net: dict) -> BMC:
@@ -501,6 +506,33 @@ class Links:
                     raise exc
                 continue
         return btp_status
+    
+    def get_relay_fee_table(self, id: str) -> FeeTable:
+        if id not in self.__bmcs :
+            raise Exception(f'Unknown Network id={id}')
+        proxy: BMC = self.__bmcs[id]
+        network: dict = self.__networks[id]
+        links = proxy.get_links()
+        routes = proxy.get_routes()
+        networks = set(routes.keys())
+        networks = networks.union(set(map(lambda x: urlparse(x).netloc, links)))
+        fee_table = []
+        for net in networks:
+            config = self.__configs[net]
+            fee1: int = proxy.get_fee(net, False)
+            fee2: int = proxy.get_fee(net, True)
+            fee_table.append({
+                'id': net,
+                'name': config['name'],
+                'fees': [fee1, fee2],
+            })
+        decimal = network.get('decimal', 18)
+        symbol = network.get('symbol') or COIN_BY_TYPE.get(network['type'], 'UNK')
+        return {
+            'decimal': decimal,
+            'symbol': symbol,
+            'table': fee_table,
+        }
 
     def apply_status(self, btp_status: NetworkStatus, now: Optional[datetime] = None) -> Tuple[bool, List[LinkEvent]]:
         if now is None:
