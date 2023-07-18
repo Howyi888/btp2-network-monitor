@@ -88,7 +88,7 @@ class MonitorBackend:
 
         if not self.__initialized:
             self.__initialized = True
-            self.write_log(now, '', '', 'log', 'START')
+            self.write_log(now, '', '', 'log', f'START {MONITOR_VERSION}')
         if len(changes) > 0:
             events = []
             for c in changes:
@@ -162,7 +162,7 @@ class MonitorBackend:
         if self.__timer is not None:
             self.__timer.cancel()
             self.__timer = None
-        self.write_log(datetime.now(), '', '', 'log', 'SHUTDOWN')
+        self.write_log(datetime.now(), '', '', 'log', f'SHUTDOWN {MONITOR_VERSION}')
         self.__storage.term()
 
 
