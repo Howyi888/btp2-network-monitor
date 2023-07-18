@@ -190,7 +190,7 @@ const EventViewer = ({url}) => {
     }
 
     return (
-        <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto" class="event-viewer">
+        <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto" className="event-viewer">
         <Table size="sm" className="event-log">
         <Thead position="sticky" top="0"><Tr ref={topLine} bg="gray.200">
             <Th>SN</Th>
