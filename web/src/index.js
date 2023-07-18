@@ -1,7 +1,7 @@
 import { ChakraProvider, Flex } from "@chakra-ui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { render } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 import EventViewer from "./components/EventViewer";
 import Header from "./components/Header";
@@ -27,4 +27,5 @@ function App() {
 }
 
 const rootElement = document.getElementById("root");
-render(<App />, rootElement);
+const root = createRoot(rootElement);
+root.render(<App  />)
