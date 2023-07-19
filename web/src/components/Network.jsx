@@ -7,12 +7,12 @@ import {
     PopoverContent,
     PopoverHeader, PopoverTrigger,
     Table, Tbody, Tr, Td, Th,
-    Tooltip, Box,
+    Tooltip, Box, Icon,
 } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import React, { useRef } from "react";
-import { FeeTableIcon } from "./Icons";
 import RelayFeeTable from "./FeeTable";
+import { TbReportMoney } from "react-icons/tb";
 
 const NetworkInfo = ({url, id, name}) =>  {
     const infoQuery = useQuery( ["networkInfo", id], async () => {
@@ -45,7 +45,7 @@ const NetworkInfo = ({url, id, name}) =>  {
     const initialFocus = useRef();
 
     return (
-        <HStack>
+        <HStack gap="0.1em">
         <Popover isLazy="true" preventOverflow="true" boundary="scrollParent"
             initialFocusRef={initialFocus}>
             <Tooltip hasArrow label="Show basic information" placement="top">
@@ -68,14 +68,15 @@ const NetworkInfo = ({url, id, name}) =>  {
         </Popover>
         <Popover isLazy="true" preventOverflow="true" boundary="scrollParent">
             <Tooltip hasArrow label="Show fee table" placement="top">
-            <Box>
+            <Box padding={0}>
             <PopoverTrigger>
-            <IconButton size="xs" icon={<FeeTableIcon />}/>
+            <IconButton size="xs" icon={<Icon as={TbReportMoney} />}/>
             </PopoverTrigger>
             </Box>
             </Tooltip>
             <PopoverContent width="auto" className='fee-table' borderColor="gray.400" marginLeft="6px">
             <PopoverArrow bg="gray.300" />
+            <PopoverCloseButton />
             <PopoverHeader bg="gray.200">
                 <Heading size="sm">{name} - Fee Table</Heading>
             </PopoverHeader>

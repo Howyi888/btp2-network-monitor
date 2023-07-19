@@ -107,6 +107,11 @@ table.event-log tr > th {
   white-space: nowrap;
 }
 
+.event-log .filter-selector {
+  cursor: pointer;
+  flex-wrap: nowrap;
+}
+
 table.event-log tr > :nth-child(1), table.event-log tr > :nth-child(3) {
   text-align: center;
 }

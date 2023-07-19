@@ -1,8 +1,9 @@
-import { ArrowForwardIcon, ArrowUpDownIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr } from "@chakra-ui/react";
+import { Badge, Box, Divider, HStack, IconButton, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr, Icon } from "@chakra-ui/react";
 import { Menu, MenuButton, MenuList, Flex } from "@chakra-ui/react";
 import React, { useEffect, useRef, useState } from "react";
 import { strfdelta } from "../utils";
+import { TbFilter } from "react-icons/tb";
+import { BiArrowToBottom, BiArrowToTop } from "react-icons/bi";
 
 interface Log {
     sn: Number;
@@ -18,7 +19,7 @@ const COLOR_FOR = {
 
 function linkInfoForLog(log: Log) {
     return (
-        <>{log.src_name}<ArrowForwardIcon />{log.dst_name}</>
+        <>{log.src_name}→{log.dst_name}</>
     );
 }
 
@@ -112,7 +113,10 @@ const EventViewer = ({url}) => {
                     setEvents((events) => {
                         return data.concat(events);
                     })
-                    topLine.current.scrollIntoView({behavior: 'smooth'});
+                    topLine.current.scrollIntoView({
+                        block: 'end',
+                        behavior: 'smooth'
+                    });
                 } else {
                     setStart(range.current.first);
                     requestUpdate(10000);
@@ -178,7 +182,9 @@ const EventViewer = ({url}) => {
 
     const EventSelector = ({children}) => {
         return <Menu>
-            <MenuButton as={Flex}>{children}</MenuButton>
+            <MenuButton as={Flex} className="filter-selector">
+                <HStack gap={0}>{children}</HStack>
+            </MenuButton>
             <MenuList>
             <MenuOptionGroup type="checkbox" value={showFlags} onChange={setShowFlags}>
             <MenuItemOption value="log">LOG</MenuItemOption>
@@ -192,18 +198,28 @@ const EventViewer = ({url}) => {
     return (
         <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto" className="event-viewer">
         <Table size="sm" className="event-log">
-        <Thead position="sticky" top="0"><Tr ref={topLine} bg="gray.200">
+        <Thead position="sticky" top="0"><Tr bg="gray.200">
             <Th>SN</Th>
             <Th>Time</Th>
-            <Th><EventSelector>Event&bull;<ArrowUpDownIcon /></EventSelector></Th>
-            <Th>Message</Th>
+            <Th><EventSelector><Text>Event&bull;</Text><Icon as={TbFilter}/></EventSelector></Th>
+            <Th>
+            <HStack>
+                <Flex flex="1">Message</Flex>
+                <Flex>
+                    <IconButton size="sm" variant="link" onClick={()=>{topLine.current.scrollIntoView(false)}} icon={<Icon as={BiArrowToTop} />}></IconButton>
+                    <IconButton size="sm" variant="link" onClick={()=>{lastLine.current.scrollIntoView()}} icon={<Icon as={BiArrowToBottom} />}></IconButton>
+                </Flex>
+            </HStack>
+            </Th>
         </Tr></Thead>
         <Tbody className={bodyClass}>
-        { events.length > 0 && events[0].sn > 1 &&
-            <Tr><Td colSpan="5" textAlign="center" padding="0px" className="top-line">
+        <Tr><Td colSpan="5" ref={topLine} textAlign="center" padding="0px" className="top-line">
+            { events.length > 0 && events[0].sn > 1 ?
                 <Text onClick={()=>{setStart(events[0].sn>100 ? events[0].sn-100 : 1)}}>...LOAD PREVIOUS...</Text>
-            </Td></Tr>
-        }
+                :
+                <Divider />
+            }
+        </Td></Tr>
         {events.map((item: Log) => rowForLog(item))}
         <Tr><Td colSpan="5" ref={lastLine} textAlign="center" padding="0px" className="bottom-line"><Divider /></Td></Tr>
         </Tbody>

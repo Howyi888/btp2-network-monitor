@@ -1,9 +1,9 @@
-import { ArrowForwardIcon, RepeatIcon } from "@chakra-ui/icons";
-import { Badge, Box, Divider, Flex, HStack, Heading, IconButton, Tooltip } from "@chakra-ui/react";
+import { Badge, Box, Divider, Flex, HStack, Heading, IconButton, Tooltip, Icon } from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { strfdelta } from "../utils";
 import NetworkInfo from "./Network";
+import { TbArrowRight, TbReload } from "react-icons/tb";
 
 const COLOR_FOR = {
     good: 'green',
@@ -51,16 +51,14 @@ const Link = ({url, link}) => {
 
     return (
         <Box p="2" className="link-info">
-        <Flex className="link-header">
+        <Flex className="link-header" mb="0.2em">
             <HStack flex="1" overflowX="hidden" mr="10px">
             <NetworkInfo url={url} id={status.src} name={status.src_name} />
-            &nbsp;
-            <ArrowForwardIcon />
-            &nbsp;
+            <Icon as={TbArrowRight} />
             <NetworkInfo url={url} id={status.dst} name={status.dst_name} />
             </HStack>
             {status.tx_seq > status.rx_seq && <Flex className="delivering">Delivering<IconButton size="xs" margin="2px" isLoading="true" /></Flex>}
-            <IconButton margin="2px" size="xs" onClick={updateStatus} isLoading={statusQuery.isLoading} icon={<RepeatIcon />} />
+            <IconButton size="xs" onClick={updateStatus} isLoading={statusQuery.isLoading} icon={<Icon as={TbReload} />} />
         </Flex>
         <Divider />
         <Flex className="link-description">
