@@ -23,6 +23,8 @@ network informations.
 | `bmcs`     | string  |   YES    | Contract address of the BMC Service                 |
 | `rx_limit` | integer |   YES    | Time limit to receive message after the transaction |
 | `tx_limit` | integer |   YES    | Time limit to get finality to transmit message      |
+| `symbol`   | string  |   YES    | Symbol for native coin for fee                      |
+| `decimal`  | integer |   YES    | Number of decimals in the fee (default: 19)         |
 
 So, estimated time limit after sending TX to send a message is sum of the followings.
 * `rx_limit` of source chain : to request message delivery with user's transaction 
@@ -41,7 +43,8 @@ It assumes that the network has a problem if it exceeds.
         "network": "0x7.icon",
         "name": "ICON Berlin",
         "bmc": "cxf1b0808f09138fffdb890772315aeabb37072a8a",
-        "rx_limit": 4
+        "rx_limit": 4,
+        "symbol" : "tICX"
     },
     {
         "type": "icon",
@@ -49,7 +52,8 @@ It assumes that the network has a problem if it exceeds.
         "network": "0x111.icon",
         "name": "HAVAH BTP",
         "bmc": "cx683a92f72cc2fe9a7a617019a8d6fcba6b6c06b7",
-        "rx_limit": 4
+        "rx_limit": 4,
+        "symbol" : "tHVH"
     }
 ]
 ```
