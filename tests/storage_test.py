@@ -9,6 +9,7 @@ class TestStorageTest(unittest.TestCase):
         self.assertIsNone(cs)
         cs2: ConnectionState = {
             'id': None,
+            'state': 'unknown',
             'tx_state': 'unknown',
             'tx_seq': None,
             'tx_ts': None,
@@ -35,6 +36,7 @@ class TestStorageTest(unittest.TestCase):
         s = Storage()
         cs: ConnectionState = {
             'id': None,
+            'state': 'unknown',
             'tx_state': 'unknown',
             'tx_seq': None,
             'tx_ts': None,
@@ -68,6 +70,7 @@ class TestStorageTest(unittest.TestCase):
         s = Storage()
         cs: ConnectionState = {
             'id': None,
+            'state': 'unknown',
             'tx_state': 'unknown',
             'tx_seq': None,
             'tx_ts': None,
