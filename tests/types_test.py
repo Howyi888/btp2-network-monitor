@@ -1,5 +1,5 @@
 import unittest
-from btp2_monitor.types import NetworkID
+from btp2_monitor.webui_types import NetworkID
 
 class TestNetworkID(unittest.TestCase):
     def test_class(self):

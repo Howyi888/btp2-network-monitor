@@ -7,13 +7,13 @@ import click
 import requests
 
 from .cui import MonitorApp
-from .monitor import Link, LinkEvent, Links, merge_status, strfdelta
+from .monitor import Link, LinkEvent, Links, strfdelta
 from .storage import Storage
 
 KEY_LINKS = 'links'
 
 @click.group()
-@click.option('--networks', metavar='<networks.json>')
+@click.option('--networks', metavar='<networks.json>', type=str, envvar="NETWORKS_JSON")
 @click.option('--storage_url', type=str, envvar="STORAGE_URL")
 @click.pass_context
 def main(ctx: click.Context, networks: str, storage_url: Optional[str] = None):
@@ -26,36 +26,15 @@ def main(ctx: click.Context, networks: str, storage_url: Optional[str] = None):
     ctx.ensure_object(dict)
     ctx.obj[KEY_LINKS] = links
 
-def build_blocks_for_slack(links: Links, link_status: Dict[Tuple[str,str],List[Link]]) -> List[any]:
-    blocks = []
-    blocks.append({
-        'type': 'section',
-        'fields': [
-            {'type': 'mrkdwn', 'text': '*Source*\n*Destination*' },
-            {'type': 'mrkdwn', 'text': '*Forward Status*\n*Backward Status*' },
-        ],
-    })
-
-    def state_to_mrkdwn(link: Link)->str:
-        if link.state == Link.GOOD:
-            return ':large_green_circle: OK'
+def build_slack_message(events:list[LinkEvent]) -> str:
+    items = []
+    for event in events:
+        link_str = f'{event.link.src_name} -> {event.link.dst_name}'
+        if event.after == Link.GOOD:
+            items.append(f'{link_str} : :large_green_circle: *GOOD*')
         else:
-            return f':red_circle: BAD (cnt={link.pending_count},dur={strfdelta(link.pending_duration)})'
-
-    for conn, status in link_status.items():
-        src_name = links.name_of(conn[0])
-        dst_name = links.name_of(conn[1])
-        fw_status = state_to_mrkdwn(status[0])
-        bw_status = state_to_mrkdwn(status[1])
-        blocks.append({
-            'type': 'section',
-            'fields': [
-                {'type': 'plain_text', 'text': f'{src_name}\n{dst_name}'},
-                {'type': 'plain_text', 'text': f'{fw_status}\n{bw_status}' },
-            ],
-        })
-    return blocks
-
+            items.append(f'{link_str} : :red_circle: *{event.after.upper()}*')
+    return "\n".join(items)
 
 @main.command('monitor')
 @click.pass_obj
@@ -69,21 +48,10 @@ def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_
 
     def on_update(changes: List[LinkEvent]):
         if slack_hook is not None and slack_channel is not None:
-            items = []
-            for c in changes:
-                link_str = f'{c.link.src_name} -> {c.link.dst_name}'
-                if c.after == Link.GOOD:
-                    items.append(f'{link_str} : :large_green_circle: *GOOD*')
-                else:
-                    items.append(f'{link_str} : :red_circle: *{c.after.upper()}*')
-            change_text = "\n".join(items)
-            link_status = merge_status(links)
-            blocks = build_blocks_for_slack(links, link_status)
             msg = {
                 'channel': slack_channel,
                 'username': 'BTP Monitor',
-                'text': change_text,
-                'blocks': blocks,
+                'text': build_slack_message(changes)
             }
             requests.post(slack_hook, json=msg)
 
