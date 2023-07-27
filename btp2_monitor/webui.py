@@ -74,9 +74,9 @@ class MonitorBackend:
             for c in changes:
                 extra = None
                 if c.name == LinkEvent.TX:
-                    extra = {'count': c.count}
+                    extra = {'seq': c.seq, 'count': c.count}
                 elif c.name == LinkEvent.RX:
-                    extra = {'count': c.count, 'delta': c.delta.total_seconds()}
+                    extra = {'seq': c.seq, 'count': c.count, 'delta': c.delta.total_seconds()}
                 elif c.name == LinkEvent.STATE:
                     extra = {'after': c.after, 'before': c.before}
                 event = self.write_log(now, c.link.src, c.link.dst, c.name, extra)

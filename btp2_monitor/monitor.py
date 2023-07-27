@@ -96,12 +96,12 @@ class LinkEvent(tuple):
     STATE = 'state'
 
     @staticmethod
-    def TXEvent(link: 'Link', count: int) -> 'LinkEvent':
-        return LinkEvent((LinkEvent.TX, link, count))
+    def TXEvent(link: 'Link', seq: int, count: int) -> 'LinkEvent':
+        return LinkEvent((LinkEvent.TX, link, seq, count))
     
     @staticmethod
-    def RXEvent(link: 'Link', count: int, delta: timedelta) -> 'LinkEvent':
-        return LinkEvent((LinkEvent.RX, link, count, delta))
+    def RXEvent(link: 'Link', seq: int, count: int, delta: timedelta) -> 'LinkEvent':
+        return LinkEvent((LinkEvent.RX, link, seq, count, delta))
 
     @staticmethod
     def StateEvent(link: 'Link', before: str, after: str) -> 'LinkEvent':
@@ -116,16 +116,16 @@ class LinkEvent(tuple):
         return self[1]
 
     @property
-    def count(self) -> int:
+    def seq(self) -> int:
         return self[2]
 
     @property
-    def delta(self) -> timedelta:
+    def count(self) -> int:
         return self[3]
 
     @property
-    def ts(self) -> datetime:
-        return self[3]
+    def delta(self) -> timedelta:
+        return self[4]
 
     @property
     def before(self) -> str:
@@ -314,11 +314,12 @@ class Link:
                 self.tx_seq = tx_state.seq
                 self.tx_ts = now
             elif self.tx_seq < tx_state.seq:
-                count = tx_state.seq - self.tx_seq
+                tx_seq = self.tx_seq
+                count = tx_state.seq - tx_seq
                 self.tx_seq = tx_state.seq
                 self.tx_ts = now
                 self.add_tx_record(tx_state.seq, now)
-                yield LinkEvent.TXEvent(self, count)
+                yield LinkEvent.TXEvent(self, tx_seq, count)
 
             if self.tx_height is None or tx_state.height > self.tx_height:
                 self.tx_height = tx_state.height
@@ -338,13 +339,15 @@ class Link:
                     tx_record = self.tx_history[0]
                     if tx_record.tx_seq <= rx_state.seq:
                         self.pop_tx_record()
+                        rx_seq = self.rx_seq
                         count = tx_record.tx_seq - self.rx_seq
                         self.rx_seq = tx_record.tx_seq
                     else:
+                        rx_seq = self.rx_seq
                         count = rx_state.seq - self.rx_seq
                         self.rx_seq = rx_state.seq
                     delay = now - tx_record.tx_ts
-                    yield LinkEvent.RXEvent(self, count, delay)
+                    yield LinkEvent.RXEvent(self, rx_seq, count, delay)
 
             if self.rx_height is None or rx_state.height > self.rx_height:
                 self.rx_height = rx_state.height

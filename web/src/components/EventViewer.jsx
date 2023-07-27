@@ -30,14 +30,16 @@ const rowForLog = (log: Log) => {
     if (log.event === 'tx') {
         message = <Td>
             {linkInfoForLog(log)} : &nbsp;
-            <Badge size='sm' colorScheme="blue">TX</Badge> &bull;
-            COUNT={extra.count}
+            <Badge size='sm' colorScheme="blue">TX</Badge>
+            {extra.seq!==undefined && <> &bull; SEQ={extra.seq}</>}
+            &nbsp;&bull; COUNT={extra.count}
         </Td>
     } else if (log.event === 'rx') {
         message = <Td>
             {linkInfoForLog(log)} : &nbsp;
-            <Badge size='sm' colorScheme="blue">RX</Badge> &bull;
-            COUNT={extra.count} DELAY={strfdelta(extra.delta)}
+            <Badge size='sm' colorScheme="blue">RX</Badge>
+            {extra.seq!==undefined && <> &bull; SEQ={extra.seq}</>}
+            &nbsp;&bull; COUNT={extra.count} &bull; DELAY={strfdelta(extra.delta)}
         </Td>
     } else if (log.event === 'state') {
         message = <Td>
