@@ -9,6 +9,10 @@ interface Log {
     sn: Number;
     src: String;
     dst: String;
+    event: String;
+    extra: String;
+    src_name: String;
+    dst_name: String;
 }
 
 const COLOR_FOR = {
@@ -23,7 +27,26 @@ function linkInfoForLog(log: Log) {
     );
 }
 
-const rowForLog = (log: Log) => {
+function connNameForLog(log: Log) {
+    return log.src_name+"→︎"+log.dst_name;
+}
+
+function connIDForLog(log: Log) {
+    if (log.src === null || log.dst === null) return null;
+    if (log.src === undefined || log.dst === undefined) return null;
+    if (log.src === '-' || log.dst === '-') return null;
+    return log.src+":"+log.dst;
+}
+
+function filterLog(filter: String, log: Log): Boolean {
+    if (filter==='none') return false;
+    const id = connIDForLog(log)
+    if (id===null) return false;
+    return id !== filter;
+}
+
+const rowForLog = (filter: String, log: Log) => {
+    const display = filterLog(filter, log) ? "none" : null;
     const ts = new Date(log.ts*1000);
     let message = null;
     const extra = JSON.parse(log.extra);
@@ -52,7 +75,7 @@ const rowForLog = (log: Log) => {
         message = <Td>{String(extra)}</Td>;
     }
     return (
-        <Tr id={log.sn} key={log.sn} className={'row-'+log.event}>
+        <Tr id={log.sn} key={log.sn} className={'row-'+log.event} display={display}>
             <Td isNumeric fontSize="xs">{log.sn}</Td>
             <Td>{ts.toLocaleString()}</Td>
             <Td>{log.event.toUpperCase()}</Td>
@@ -79,6 +102,18 @@ const EventViewer = ({url}) => {
             timer.current = null;
             setCurrent(Date.now());
         }, timeout)
+    };
+
+    const connections = useRef(new Map());
+    const makeConnections = (logs) => {
+        let conns = new Map();
+        logs.forEach((log: Log) => {
+            const connID = connIDForLog(log);
+            if (connID !== null && !conns.has(connID)) {
+                conns.set(connID, connNameForLog(log));
+            }
+        });
+        return conns;
     }
 
     const loadEvents = async (url: String, params: String[]) => {
@@ -155,6 +190,7 @@ const EventViewer = ({url}) => {
                 first: events[0].sn,
                 last: events[events.length-1].sn
             };
+            connections.current = makeConnections(events);
         }
     }, [events]);
 
@@ -197,6 +233,25 @@ const EventViewer = ({url}) => {
         </Menu>
     }
 
+
+    const [ messageFilter, setMessageFilter ] = useState("none");
+    const MessageFilter = ({children}) => {
+        return <Menu>
+            <MenuButton as={Flex} className="filter-selector">
+                <HStack gap={0}>{children}</HStack>
+            </MenuButton>
+            <MenuList>
+                <MenuOptionGroup value={messageFilter} onChange={setMessageFilter}>
+                    <MenuItemOption value="none">No Filter</MenuItemOption>
+                    {Array.from(connections.current.keys()).sort().map((key) => {
+                        const value = connections.current.get(key);
+                        return <MenuItemOption value={key} key={key}>{value}</MenuItemOption>;
+                    })}
+                </MenuOptionGroup>
+            </MenuList>
+        </Menu>
+    }
+
     return (
         <Box border="1px" flex="1" margin="6px" borderRadius="6px" borderColor="gray.400" overflowY="auto" className="event-viewer">
         <Table size="sm" className="event-log">
@@ -206,7 +261,12 @@ const EventViewer = ({url}) => {
             <Th><EventSelector><Text>Event&bull;</Text><Icon as={TbFilter}/></EventSelector></Th>
             <Th>
             <HStack>
-                <Flex flex="1">Message</Flex>
+                <Flex flex="1">
+                    <MessageFilter>
+                        <Text>Messages&bull;</Text><Icon as={TbFilter} />
+                        <Text>&bull;{connections.current.get(messageFilter) || "No Filter"}</Text>
+                    </MessageFilter>
+                </Flex>
                 <Flex>
                     <IconButton size="sm" variant="link" onClick={()=>{topLine.current.scrollIntoView(false)}} icon={<Icon as={BiArrowToTop} />}></IconButton>
                     <IconButton size="sm" variant="link" onClick={()=>{lastLine.current.scrollIntoView()}} icon={<Icon as={BiArrowToBottom} />}></IconButton>
@@ -222,7 +282,7 @@ const EventViewer = ({url}) => {
                 <Divider />
             }
         </Td></Tr>
-        {events.map((item: Log) => rowForLog(item))}
+        {events.map((item: Log) => rowForLog(messageFilter, item))}
         <Tr><Td colSpan="5" ref={lastLine} textAlign="center" padding="0px" className="bottom-line"><Divider /></Td></Tr>
         </Tbody>
         </Table>
