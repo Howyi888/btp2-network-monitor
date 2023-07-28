@@ -47,3 +47,4 @@ class LinkInfo(TypedDict):
     rx_height: Optional[int]
     pending_count: Optional[int]
     pending_delay: Optional[float]
+    time_limit: Optional[int]

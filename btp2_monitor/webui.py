@@ -122,6 +122,7 @@ class MonitorBackend:
             'rx_height': link.rx_height,
             'pending_count': link.pending_count,
             'pending_delay': link.pending_duration.total_seconds(),
+            'time_limit': link.time_limit,
         }
 
     def get_logs(self, **kwargs) -> List[Log]:

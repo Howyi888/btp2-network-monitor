@@ -1,4 +1,4 @@
-import { Badge, Box, Divider, Flex, HStack, Heading, IconButton, Tooltip, Icon, Text, Spinner } from "@chakra-ui/react";
+import { Badge, Box, Divider, Flex, HStack, Heading, IconButton, Tooltip, Icon, Text, Progress } from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { strfdelta } from "../utils";
@@ -58,8 +58,13 @@ const Link = ({url, link}) => {
             <NetworkInfo url={url} id={status.dst} name={status.dst_name} />
             </HStack>
             {status.tx_seq > status.rx_seq && <HStack className="delivering" mr="6px">
-                <Spinner size="xs"/>
                 <Text>Delivering</Text>
+                <Progress
+                    value={status.pending_delay} max={status.time_limit}
+                    size="md" width="100px"
+                    hasStripe isAnimated
+                    isIndeterminate={status.pending_delay >= status.time_limit}
+                    colorScheme="red" />
             </HStack>}
             <IconButton size="xs" onClick={updateStatus} isLoading={statusQuery.isLoading} icon={<Icon as={TbReload} />} />
         </Flex>
