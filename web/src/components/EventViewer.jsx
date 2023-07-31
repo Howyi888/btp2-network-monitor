@@ -20,6 +20,9 @@ const COLOR_FOR = {
     bad: 'red'
 }
 
+const TOP_LINE = 'top'
+const LAST_LINE = 'last'
+
 
 function linkInfoForLog(log: Log) {
     return (
@@ -93,6 +96,7 @@ const EventViewer = ({url}) => {
     const lastLine = useRef(null);
     const topLine = useRef(null);
     const range = useRef(null);
+    const scrollTarget = useRef(null);
 
     const requestUpdate = (timeout) => {
         if (timer.current) {
@@ -129,7 +133,7 @@ const EventViewer = ({url}) => {
             loadEvents(url, []).then((data) => {
                 if (data.length > 0) {
                     setEvents(data.reverse());
-                    lastLine.current.scrollIntoView();
+                    scrollTarget.current = LAST_LINE;
                 } else {
                     requestUpdate(10000);
                 }
@@ -150,10 +154,7 @@ const EventViewer = ({url}) => {
                     setEvents((events) => {
                         return data.concat(events);
                     })
-                    topLine.current.scrollIntoView({
-                        block: 'end',
-                        behavior: 'smooth'
-                    });
+                    scrollTarget.current = TOP_LINE;
                 } else {
                     setStart(range.current.first);
                     requestUpdate(10000);
@@ -170,8 +171,8 @@ const EventViewer = ({url}) => {
                 if (data.length > 0) {
                     setEvents((events) => {
                         return events.concat(data)
-                    })
-                    lastLine.current.scrollIntoView({behavior: 'smooth'});
+                    });
+                    scrollTarget.current = LAST_LINE;
                 } else {
                     requestUpdate(10000);
                 }
@@ -193,6 +194,31 @@ const EventViewer = ({url}) => {
             connections.current = makeConnections(events);
         }
     }, [events]);
+
+    const scrollTo = (to, behavior?) => {
+        if (behavior === undefined) {
+            behavior = 'instant';
+        }
+        if (to === TOP_LINE) {
+            topLine.current.scrollIntoView({
+                behavior: behavior,
+                block: 'center',
+            });
+        }
+        if (to === LAST_LINE) {
+            lastLine.current.scrollIntoView({
+                behavior: behavior,
+                block: 'center',
+            });
+        }
+    }
+
+    useEffect(() => {
+        if (scrollTarget.current!==null) {
+            scrollTo(scrollTarget.current, 'smooth');
+            scrollTarget.current = null;
+        }
+    });
 
     const [ bodyClass, setBodyClass ] = useState('normal');
     const [ showFlags, setShowFlags ] = useState(["log", "tx", "state"]);
@@ -268,8 +294,8 @@ const EventViewer = ({url}) => {
                     </MessageFilter>
                 </Flex>
                 <Flex>
-                    <IconButton size="sm" variant="link" onClick={()=>{topLine.current.scrollIntoView(false)}} icon={<Icon as={BiArrowToTop} />}></IconButton>
-                    <IconButton size="sm" variant="link" onClick={()=>{lastLine.current.scrollIntoView()}} icon={<Icon as={BiArrowToBottom} />}></IconButton>
+                    <IconButton size="sm" variant="link" onClick={()=>{scrollTo(TOP_LINE);}} icon={<Icon as={BiArrowToTop} />}></IconButton>
+                    <IconButton size="sm" variant="link" onClick={()=>{scrollTo(LAST_LINE);}} icon={<Icon as={BiArrowToBottom} />}></IconButton>
                 </Flex>
             </HStack>
             </Th>
