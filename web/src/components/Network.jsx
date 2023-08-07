@@ -12,6 +12,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import React, { useRef } from "react";
 import RelayFeeTable from "./FeeTable";
+import { strfdelta } from "../utils";
 import { TbReportMoney } from "react-icons/tb";
 
 const NetworkInfo = ({url, id, name}) =>  {
@@ -33,8 +34,8 @@ const NetworkInfo = ({url, id, name}) =>  {
                     <Tr><Th>Network</Th><Td>{info.network}</Td></Tr>
                     { info.name && <Tr><Th>Name</Th><Td>{info.name}</Td></Tr> }
                     { info.endpoint && <Tr><Th>EndPoint</Th><Td>{info.endpoint}</Td></Tr> }
-                    { info.tx_limit && <Tr><Th>TxLimit</Th><Td isNumeric>{info.tx_limit} seconds</Td></Tr> }
-                    { info.rx_limit && <Tr><Th>RxLimit</Th><Td isNumeric>{info.rx_limit} seconds</Td></Tr> }
+                    { info.tx_limit && <Tr><Th>TxLimit</Th><Td isNumeric>{strfdelta(info.tx_limit)}</Td></Tr> }
+                    { info.rx_limit && <Tr><Th>RxLimit</Th><Td isNumeric>{strfdelta(info.rx_limit)}</Td></Tr> }
                     { info.bmc && <Tr><Th>BMC</Th><Td>{info.bmc}</Td></Tr> }
                     { info.bmcm && <Tr><Th>BMCM</Th><Td>{info.bmcm}</Td></Tr> }
                     { info.bmcs && <Tr><Th>BMCS</Th><Td>{info.bmcs}</Td></Tr> }
