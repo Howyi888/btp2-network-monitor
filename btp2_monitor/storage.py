@@ -3,7 +3,7 @@
 from datetime import datetime
 import json
 import sqlite3
-from threading import Timer
+from threading import Timer, RLock
 from typing import Callable, Concatenate, Iterable, List, Optional, ParamSpec, TypedDict, TypeVar
 
 P = ParamSpec('P')
@@ -125,6 +125,8 @@ CREATE TABLE IF NOT EXISTS txhistory (
         for sql in self.CREATE_TABLES:
             conn.execute(sql)
         self.__conn = conn
+        self.__cursor = None
+        self.__lock = RLock()
 
         self.__timer = None
         # self.generate_log()
@@ -140,12 +142,10 @@ CREATE TABLE IF NOT EXISTS txhistory (
         self.__timer.start()
 
     def write_log(self, ts: datetime, src: str, dst: str, event: str, msg: any) -> int:
-        c = self.__conn.cursor()
-        c.execute('INSERT INTO logs (ts, src, dst, event, extra) values ( ?, ?, ?, ?, ? )', (ts.timestamp(), src, dst, event, json.dumps(msg)))
-        self.__conn.commit()
-        row_id = c.lastrowid
-        c.close()
-        return row_id
+        def write_log(c: sqlite3.Cursor) -> int:
+            c.execute('INSERT INTO logs (ts, src, dst, event, extra) values ( ?, ?, ?, ?, ? )', (ts.timestamp(), src, dst, event, json.dumps(msg)))
+            return c.lastrowid
+        return self.do_write(write_log)
 
     def get_logs(self, src: Optional[str] = None, dst: Optional[str] = None, event: Optional[str] = None, limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[Log]:
         conditions = []
@@ -190,24 +190,46 @@ CREATE TABLE IF NOT EXISTS txhistory (
         return connection_state_from(result)
     
     def do_batch(self, call: Callable[P, R], *args, **kwargs) -> R:
-        cursor = self.__conn.execute('BEGIN DEFERRED')
-        try:
-            ret: R = call(*args, **kwargs)
-            cursor.connection.commit()
-            return ret
-        except:
-            cursor.connection.rollback()
+        self.__lock.acquire()
+        try :
+            cursor = self.__conn.execute('BEGIN DEFERRED')
+            self.__cursor = cursor
+            try:
+                ret: R = call(*args, **kwargs)
+                cursor.execute('COMMIT')
+                return ret
+            except:
+                cursor.execute('ROLLBACK')
+                raise
+            finally:
+                self.__cursor = None
+                cursor.close()
         finally:
-            cursor.close()
+            self.__lock.release()
 
-    def do_with_cursor(self,  call: Callable[Concatenate[sqlite3.Cursor,P],R], *args, **kwargs) -> R:
-        cursor = self.__conn.cursor()
-        try:
-            ret: R = call(cursor, *args, **kwargs)
+    def do_write(self,  call: Callable[Concatenate[sqlite3.Cursor,P],R], *args, **kwargs) -> R:
+        self.__lock.acquire()
+        try :
+            if self.__cursor is None:
+                cursor = self.__conn.execute('BEGIN DEFERRED')
+                try:
+                    ret: R = call(cursor, *args, **kwargs)
+                    cursor.execute('COMMIT')
+                except:
+                    cursor.execute('ROLLBACK')
+                    raise
+                finally:
+                    cursor.close()
+            else:
+                cursor = self.__conn.cursor()
+                try :
+                    ret: R = call(cursor, *args, **kwargs)
+                finally:
+                    cursor.close()
+            return ret
         finally:
-            cursor.close()
-        return ret
-    
+            self.__lock.release()
+        
     def set_connection_state(self, src: str, dst: str, state: ConnectionState, update_id: Optional[bool] = True):
         def do_set(cursor: sqlite3.Cursor) -> int:
             sql = f'INSERT INTO connections (src,dst,{",".join(ConnectionStateFields)}) VALUES (?,?,{",".join("?" * len(ConnectionStateFields))})'
@@ -219,7 +241,7 @@ CREATE TABLE IF NOT EXISTS txhistory (
             if update_id:
                 state['id'] = id
             return id
-        return self.do_with_cursor(do_set)
+        return self.do_write(do_set)
 
     def add_tx_record(self, conn_id: int, tx_seq: int, tx_ts: datetime,) -> TXRecord:
         def do_write(cursor: sqlite3.Cursor) -> TXRecord:
@@ -228,7 +250,7 @@ CREATE TABLE IF NOT EXISTS txhistory (
             cursor.execute(sql, params)
             sn = cursor.lastrowid
             return TXRecord((sn, tx_seq, tx_ts.timestamp()))
-        return self.do_with_cursor(do_write)
+        return self.do_write(do_write)
     
     def get_tx_records(self, conn_id: int) -> Iterable[TXRecord]:
         cursor = self.__conn.cursor()
@@ -246,7 +268,7 @@ CREATE TABLE IF NOT EXISTS txhistory (
     def delete_tx_record(self, sn: int, **kwargs):
         def do_write(cursor: sqlite3.Cursor):
             cursor.execute('DELETE FROM txhistory WHERE sn = ?', [sn])
-        return self.do_with_cursor(do_write, **kwargs)
+        return self.do_write(do_write, **kwargs)
 
     def term(self):
         self.__conn.close()

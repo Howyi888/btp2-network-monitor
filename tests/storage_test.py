@@ -81,6 +81,19 @@ class TestStorageTest(unittest.TestCase):
             'rx_height': None,
         }
 
+        cs_v2: ConnectionState = {
+            'id': None,
+            'state': 'unknown2',
+            'tx_state': 'unknown2',
+            'tx_seq': None,
+            'tx_ts': None,
+            'tx_height': None,
+            'rx_state': 'unknown2',
+            'rx_seq': None,
+            'rx_ts': None,
+            'rx_height': None,
+        }
+
         def do_update():
             s.set_connection_state('a', 'b', cs)
             now = datetime.now()
@@ -98,9 +111,61 @@ class TestStorageTest(unittest.TestCase):
         cs2 = s.get_connection_state('a', 'b')
         self.assertIsNone(cs2)
 
+        s.set_connection_state('a', 'b', cs_v2)
+        cs2 = s.get_connection_state('a', 'b')
+        self.assertEqual(cs_v2, cs2)
+
         try:
             s.do_batch(do_update)
         except:
             self.fail('Exception')
+        cs2 = s.get_connection_state('a', 'b')
+        self.assertEqual(cs, cs2)
+
+    def test_batch2(self):
+        s = Storage()
+        cs: ConnectionState = {
+            'id': None,
+            'state': 'unknown',
+            'tx_state': 'unknown',
+            'tx_seq': None,
+            'tx_ts': None,
+            'tx_height': None,
+            'rx_state': 'unknown',
+            'rx_seq': None,
+            'rx_ts': None,
+            'rx_height': None,
+        }
+
+        cs_v2: ConnectionState = {
+            'id': None,
+            'state': 'unknown2',
+            'tx_state': 'unknown2',
+            'tx_seq': None,
+            'tx_ts': None,
+            'tx_height': None,
+            'rx_state': 'unknown2',
+            'rx_seq': None,
+            'rx_ts': None,
+            'rx_height': None,
+        }
+
+        cs2 = s.get_connection_state('a', 'b')
+        self.assertIsNone(cs2)
+
+        s.set_connection_state('a', 'b', cs)
+        cs2 = s.get_connection_state('a', 'b')
+        self.assertEqual(cs, cs2)
+
+        def do_update():
+            s.set_connection_state('a', 'b', cs_v2)
+            now = datetime.now()
+            s.add_tx_record(cs['id'], 3, now)
+        s.do_batch(do_update)
+
+        cs2 = s.get_connection_state('a', 'b')
+        self.assertEqual(cs_v2, cs2)
+
+        s.set_connection_state('a', 'b', cs)
         cs2 = s.get_connection_state('a', 'b')
         self.assertEqual(cs, cs2)
