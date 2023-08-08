@@ -6,9 +6,27 @@ from urllib.parse import urlparse
 
 class NetworkID (str):
     @staticmethod
-    def from_address(addr: str) -> 'NetworkID':
+    def from_address(addr: Optional[str]) -> Optional['NetworkID']:
+        if addr is None:
+            return None
+        elif addr == '':
+            return NetworkID('')
         url = urlparse(addr)
         return NetworkID(f'{url.netloc}-{url.path[1:]}')
+
+    @staticmethod
+    def as_address(id: Optional['NetworkID']) -> Optional[str]:
+        if id is None:
+            return None
+        else:
+            return id.address
+
+    @staticmethod
+    def from_str(s: Optional['str']) -> Optional['NetworkID']:
+        if s is None or s == '':
+            return None
+        else:
+            return NetworkID(s)
 
     @property
     def address(self) -> str:

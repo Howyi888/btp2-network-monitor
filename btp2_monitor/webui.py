@@ -125,8 +125,11 @@ class MonitorBackend:
             'time_limit': link.time_limit,
         }
 
-    def get_logs(self, **kwargs) -> List[Log]:
-        logs = self.__storage.get_logs(**kwargs)
+    def get_logs(self, src: Optional[NetworkID], dst: Optional[NetworkID], **kwargs) -> List[Log]:
+        logs = self.__storage.get_logs(
+            src=NetworkID.as_address(src),
+            dst=NetworkID.as_address(dst),
+            **kwargs)
         for log in logs:
             if 'src' in log:
                 log['src_name'] = be.__links.name_of(log['src'])
@@ -199,8 +202,19 @@ async def getFeeTable(id: str) -> FeeTableJSON:
     return be.get_fee_table(NetworkID(id))
 
 @app.get("/events")
-async def getLogs(limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[dict]:
-    return be.get_logs(after=after, limit=limit, before=before)
+async def getLogs(limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None, events: Optional[str] = None, src: Optional[str] = None, dst: Optional[str] = None) -> List[dict]:
+    if events is not None:
+        event_list = []
+        for event in map(lambda x: x.strip(), events.split(',')):
+            event_list.append(event)
+            if event == 'tx':
+                event_list.append('rx')
+        events = event_list
+    return be.get_logs(
+        src=NetworkID.from_str(src),
+        dst=NetworkID.from_str(dst),
+        events=events,
+        after=after, limit=limit, before=before)
 
 app.mount("/", StaticFiles(directory=DOCUMENT_ROOT, html=True), name="static")
 

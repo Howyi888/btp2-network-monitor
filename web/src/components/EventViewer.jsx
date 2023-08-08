@@ -96,7 +96,10 @@ const EventViewer = ({url}) => {
     const lastLine = useRef(null);
     const topLine = useRef(null);
     const range = useRef(null);
+    const queryNames = useRef(null);
     const scrollTarget = useRef(null);
+    const top = useRef(1);
+    const [eventNames, setEventNames] = useState(['state', 'log', 'tx'])
 
     const requestUpdate = (timeout) => {
         if (timer.current) {
@@ -118,19 +121,35 @@ const EventViewer = ({url}) => {
             }
         });
         return conns;
-    }
+    };
 
-    const loadEvents = async (url: String, params: String[]) => {
-        const res = await fetch(url+'/events'+(params.length>0?'?'+params.join('&'):''));
+    const loadEventsEx = async (uri: String, params: Map<String,String>) => {
+        let url = uri+'/events'
+        if (params.size !== 0) {
+            let ps = [];
+            params.forEach((value: String, key: String) => {
+                ps.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+            });
+            url += '?' + ps.join('&');
+        }
+        const res = await fetch(url);
         const data: Log[] = await res.json();
         return data;
-    }
+    };
 
     useEffect(() => {
         if (isLoading.current) return;
-        isLoading.current = true
+        isLoading.current = true;
+        if (String(queryNames.current) !== eventNames.toString()) {
+            queryNames.current = eventNames;
+            range.current = null;
+            top.current = 1;
+            setStart(null);
+        }
         if (range.current === null) {
-            loadEvents(url, []).then((data) => {
+            let params = new Map();
+            params.set("events", eventNames.join(","));
+            loadEventsEx(url, params).then((data) => {
                 if (data.length > 0) {
                     setEvents(data.reverse());
                     scrollTarget.current = LAST_LINE;
@@ -143,12 +162,13 @@ const EventViewer = ({url}) => {
                 isLoading.current = false;
             });
         } else if (start !== null && start < range.current.first) {
-            let params = [];
-            params.push('before='+range.current.first);
+            let params = new Map();
+            params.set("events", eventNames.join(","));
+            params.set('before', range.current.first);
             let limit = range.current.first - start;
             limit = limit > 100 ? 100 : limit;
-            params.push('limit='+limit)
-            loadEvents(url, params).then((data) => {
+            params.set('limit', limit)
+            loadEventsEx(url, params).then((data) => {
                 if (data.length > 0) {
                     data.reverse();
                     setEvents((events) => {
@@ -156,6 +176,7 @@ const EventViewer = ({url}) => {
                     })
                     scrollTarget.current = TOP_LINE;
                 } else {
+                    top.current = range.current.first;
                     setStart(range.current.first);
                     requestUpdate(10000);
                 }
@@ -165,9 +186,10 @@ const EventViewer = ({url}) => {
                 isLoading.current = false;
             });
         } else {
-            let params = [];
-            params.push('after='+range.current.last);
-            loadEvents(url, params).then((data) => {
+            let params = new Map();
+            params.set("events", eventNames.join(","));
+            params.set('after', range.current.last);
+            loadEventsEx(url, params).then((data) => {
                 if (data.length > 0) {
                     setEvents((events) => {
                         return events.concat(data)
@@ -182,7 +204,7 @@ const EventViewer = ({url}) => {
                 isLoading.current = false;
             });
         }
-    }, [current, url, start]);
+    }, [current, url, start, eventNames]);
 
     useEffect(() => {
         requestUpdate(200);
@@ -220,45 +242,20 @@ const EventViewer = ({url}) => {
         }
     });
 
-    const [ bodyClass, setBodyClass ] = useState('normal');
-    const [ showFlags, setShowFlags ] = useState(["log", "tx", "state"]);
-    useEffect(() => {
-        let classes = [];
-        if (!showFlags.includes('log')) {
-            classes.push('hide-log')
-        }
-        if (!showFlags.includes('tx')) {
-            classes.push('hide-tx')
-        }
-        if (!showFlags.includes('state')) {
-            classes.push('hide-state')
-        }
-        if (classes.length === 0) {
-            setBodyClass('normal')
-        } else {
-            let className = "";
-            classes.forEach((cls) => {
-                className += " "+cls;
-            })
-            setBodyClass(className.substring(1));
-        }
-    }, [showFlags])
-
     const EventSelector = ({children}) => {
         return <Menu>
             <MenuButton as={Flex} className="filter-selector">
                 <HStack gap={0}>{children}</HStack>
             </MenuButton>
             <MenuList>
-            <MenuOptionGroup type="checkbox" value={showFlags} onChange={setShowFlags}>
+            <MenuOptionGroup type="checkbox" value={eventNames} onChange={setEventNames}>
             <MenuItemOption value="log">LOG</MenuItemOption>
-            <MenuItemOption value="tx">TX</MenuItemOption>
+            <MenuItemOption value="tx">TX/RX</MenuItemOption>
             <MenuItemOption value="state">STATE</MenuItemOption>
             </MenuOptionGroup>
             </MenuList>
         </Menu>
     }
-
 
     const [ messageFilter, setMessageFilter ] = useState("none");
     const MessageFilter = ({children}) => {
@@ -300,9 +297,9 @@ const EventViewer = ({url}) => {
             </HStack>
             </Th>
         </Tr></Thead>
-        <Tbody className={bodyClass}>
+        <Tbody className="normal">
         <Tr><Td colSpan="5" ref={topLine} textAlign="center" padding="0px" className="top-line">
-            { events.length > 0 && events[0].sn > 1 ?
+            { events.length > 0 && events[0].sn > top.current ?
                 <Text onClick={()=>{setStart(events[0].sn>100 ? events[0].sn-100 : 1)}}>...LOAD PREVIOUS...</Text>
                 :
                 <Divider />

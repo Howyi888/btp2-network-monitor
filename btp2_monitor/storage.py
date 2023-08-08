@@ -147,19 +147,21 @@ CREATE TABLE IF NOT EXISTS txhistory (
             return c.lastrowid
         return self.do_write(write_log)
 
-    def get_logs(self, src: Optional[str] = None, dst: Optional[str] = None, event: Optional[str] = None, limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[Log]:
+    def get_logs(self, src: Optional[str] = None, dst: Optional[str] = None, events: Optional[list[str]] = None, limit: Optional[int] = None, after: Optional[int] = None, before: Optional[int] = None) -> List[Log]:
         conditions = []
         params = []
         order = 'DESC'
         if src is not None:
-            conditions.append('src = ?')
+            conditions.append('( src = ? or src = ? )')
             params.append(src)
+            params.append('')
         if dst is not None:
-            conditions.append('dst = ?')
+            conditions.append('( dst = ? or dst = ? )')
             params.append(dst)
-        if event is not None:
-            conditions.append('event = ?')
-            params.append(event)
+            params.append('')
+        if events is not None:
+            conditions.append(f'event in ( {",".join(["?"]*len(events))} )')
+            params += events
         if after is not None:
             order = 'ASC'
             conditions.append('sn > ?')

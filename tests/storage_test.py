@@ -169,3 +169,18 @@ class TestStorageTest(unittest.TestCase):
         s.set_connection_state('a', 'b', cs)
         cs2 = s.get_connection_state('a', 'b')
         self.assertEqual(cs, cs2)
+
+    def test_logs(self):
+        s = Storage()
+        now = datetime.now()
+        s.write_log(now, "0x7.icon", "0xaa36a7.eth2", "tx", { 'count': 3 })
+        s.write_log(now, "0x7.icon", "0xaa36a7.eth2", "rx", { 'count': 3, 'delta': 30.3 })
+        s.write_log(now, "0x7.icon", "0xaa36a7.eth2", "state", { 'before': 'good', 'after': 'bad' })
+        s.write_log(now, "", "", "log", "yahoo")
+
+        logs = s.get_logs(events=['tx', 'rx', 'state', 'log'])
+        self.assertEqual(4, len(logs))
+        logs = s.get_logs(events=['tx', 'rx'])
+        self.assertEqual(2, len(logs))
+        logs = s.get_logs(events=['state', 'log'])
+        self.assertEqual(2, len(logs))
