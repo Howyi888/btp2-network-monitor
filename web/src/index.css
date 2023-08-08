@@ -145,3 +145,8 @@ table.event-log tr > :last-child {
   font-size: 7px;
   cursor: pointer;
 }
+
+.event-log .top-line .chakra-spinner {
+  height: 7px;
+  width: 7px;
+}

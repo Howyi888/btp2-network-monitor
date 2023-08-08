@@ -1,4 +1,4 @@
-import { Badge, Box, Divider, HStack, IconButton, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr, Icon } from "@chakra-ui/react";
+import { Badge, Box, Divider, HStack, IconButton, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr, Icon, Spinner } from "@chakra-ui/react";
 import { Menu, MenuButton, MenuList, Flex } from "@chakra-ui/react";
 import React, { useEffect, useRef, useState } from "react";
 import { strfdelta } from "../utils";
@@ -299,10 +299,16 @@ const EventViewer = ({url}) => {
         </Tr></Thead>
         <Tbody className="normal">
         <Tr><Td colSpan="5" ref={topLine} textAlign="center" padding="0px" className="top-line">
-            { events.length > 0 && events[0].sn > top.current ?
-                <Text onClick={()=>{setStart(events[0].sn>100 ? events[0].sn-100 : 1)}}>...LOAD PREVIOUS...</Text>
+            { (start !== null) && (start<events[0].sn) ?
+                <Text>...LOADING <Spinner size="xs" />...</Text>
                 :
-                <Divider />
+                <>
+                { events.length > 0 && events[0].sn > top.current ?
+                    <Text onClick={()=>{setStart(events[0].sn>100 ? events[0].sn-100 : 1)}}>...LOAD PREVIOUS...</Text>
+                    :
+                    <Divider />
+                }
+                </>
             }
         </Td></Tr>
         {events.map((item: Log) => rowForLog(messageFilter, item))}
