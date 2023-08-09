@@ -99,7 +99,9 @@ class MonitorBackend:
             links.append(key)
         return list(map(lambda key: {
              'src': NetworkID.from_address(key[0]),
+             'src_name': self.__links.name_of(key[0]),
              'dst': NetworkID.from_address(key[1]),
+             'dst_name': self.__links.name_of(key[1]),
         }, links))
 
     def get_network(self, id: NetworkID) -> dict:

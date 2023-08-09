@@ -1,6 +1,7 @@
 import { Badge, Box, Divider, HStack, IconButton, MenuItemOption, MenuOptionGroup, Table, Tbody, Td, Text, Th, Thead, Tr, Icon, Spinner } from "@chakra-ui/react";
 import { Menu, MenuButton, MenuList, Flex } from "@chakra-ui/react";
 import React, { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { strfdelta } from "../utils";
 import { TbFilter } from "react-icons/tb";
 import { BiArrowToBottom, BiArrowToTop } from "react-icons/bi";
@@ -22,6 +23,7 @@ const COLOR_FOR = {
 
 const TOP_LINE = 'top'
 const LAST_LINE = 'last'
+const NO_LINK = 'none'
 
 
 function linkInfoForLog(log: Log) {
@@ -30,33 +32,25 @@ function linkInfoForLog(log: Log) {
     );
 }
 
-function connNameForLog(log: Log) {
-    return log.src_name+"→︎"+log.dst_name;
+function applyFilters(params: Map, events: String[], link: String) {
+    if (events !== null) {
+        params.set('events', events.join(','));
+    }
+    if (link !== NO_LINK) {
+        const src_dst = link.split(':');
+        params.set('src', src_dst[0]);
+        params.set('dst', src_dst[1]);
+    }
 }
 
-function connIDForLog(log: Log) {
-    if (log.src === null || log.dst === null) return null;
-    if (log.src === undefined || log.dst === undefined) return null;
-    if (log.src === '-' || log.dst === '-') return null;
-    return log.src+":"+log.dst;
-}
-
-function filterLog(filter: String, log: Log): Boolean {
-    if (filter==='none') return false;
-    const id = connIDForLog(log)
-    if (id===null) return false;
-    return id !== filter;
-}
-
-const rowForLog = (filter: String, log: Log) => {
-    const display = filterLog(filter, log) ? "none" : null;
+const rowForLog = (log: Log) => {
     const ts = new Date(log.ts*1000);
     let message = null;
     const extra = JSON.parse(log.extra);
     if (log.event === 'tx') {
         message = <Td>
             {linkInfoForLog(log)} : &nbsp;
-            <Badge size='sm' colorScheme="blue">TX</Badge>
+            <Badge size='sm' colorScheme="blue" color="red.700">TX</Badge>
             {extra.seq!==undefined && <> &bull; SEQ={extra.seq}</>}
             &nbsp;&bull; COUNT={extra.count}
         </Td>
@@ -78,7 +72,7 @@ const rowForLog = (filter: String, log: Log) => {
         message = <Td>{String(extra)}</Td>;
     }
     return (
-        <Tr id={log.sn} key={log.sn} className={'row-'+log.event} display={display}>
+        <Tr id={log.sn} key={log.sn} className={'row-'+log.event}>
             <Td isNumeric fontSize="xs">{log.sn}</Td>
             <Td>{ts.toLocaleString()}</Td>
             <Td>{log.event.toUpperCase()}</Td>
@@ -96,10 +90,12 @@ const EventViewer = ({url}) => {
     const lastLine = useRef(null);
     const topLine = useRef(null);
     const range = useRef(null);
-    const queryNames = useRef(null);
+    const queryEvents = useRef(null);
+    const queryLink = useRef(null);
     const scrollTarget = useRef(null);
     const top = useRef(1);
-    const [eventNames, setEventNames] = useState(['state', 'log', 'tx'])
+    const [filterEvents, setFilterEvents] = useState(['state', 'log', 'tx'])
+    const [filterLink, setFilterLink] = useState(NO_LINK);
 
     const requestUpdate = (timeout) => {
         if (timer.current) {
@@ -111,16 +107,40 @@ const EventViewer = ({url}) => {
         }, timeout)
     };
 
-    const connections = useRef(new Map());
-    const makeConnections = (logs) => {
-        let conns = new Map();
-        logs.forEach((log: Log) => {
-            const connID = connIDForLog(log);
-            if (connID !== null && !conns.has(connID)) {
-                conns.set(connID, connNameForLog(log));
-            }
-        });
-        return conns;
+    const links = useQuery(["links"], async () => {
+        const res = await fetch(url+"/links");
+        const jso = await res.json();
+        return jso;
+    }, {
+        staleTime: 10000
+    }).data;
+
+    const [availableLinks, setAvailableLinks] = useState([]);
+
+    useEffect(() => {
+        if (links !== undefined) {
+            let filters = []
+            links.forEach((link) => {
+                filters.push({
+                    'value': link.src+':'+link.dst,
+                    'name': link.src_name+"→︎"+link.dst_name,
+                });
+                filters.push({
+                    'value': link.dst+':'+link.src,
+                    'name': link.dst_name+"→︎"+link.src_name,
+                });
+            })
+            setAvailableLinks(filters);
+        }
+    }, [links]);
+
+    const getLinkName = (value) => {
+        const filtered = availableLinks.filter((filter) => { return filter.value === value; })
+        if (filtered.length === 0) {
+            return null;
+        } else {
+            return filtered[0].name;
+        }
     };
 
     const loadEventsEx = async (uri: String, params: Map<String,String>) => {
@@ -140,15 +160,18 @@ const EventViewer = ({url}) => {
     useEffect(() => {
         if (isLoading.current) return;
         isLoading.current = true;
-        if (String(queryNames.current) !== eventNames.toString()) {
-            queryNames.current = eventNames;
+
+        if (String(queryEvents.current) !== filterEvents.toString() ||
+            queryLink.current !== filterLink) {
+            queryEvents.current = filterEvents;
+            queryLink.current = filterLink;
             range.current = null;
             top.current = 1;
             setStart(null);
         }
         if (range.current === null) {
             let params = new Map();
-            params.set("events", eventNames.join(","));
+            applyFilters(params, filterEvents, filterLink);
             loadEventsEx(url, params).then((data) => {
                 if (data.length > 0) {
                     setEvents(data.reverse());
@@ -163,7 +186,7 @@ const EventViewer = ({url}) => {
             });
         } else if (start !== null && start < range.current.first) {
             let params = new Map();
-            params.set("events", eventNames.join(","));
+            applyFilters(params, filterEvents, filterLink);
             params.set('before', range.current.first);
             let limit = range.current.first - start;
             limit = limit > 100 ? 100 : limit;
@@ -187,7 +210,7 @@ const EventViewer = ({url}) => {
             });
         } else {
             let params = new Map();
-            params.set("events", eventNames.join(","));
+            applyFilters(params, filterEvents, filterLink);
             params.set('after', range.current.last);
             loadEventsEx(url, params).then((data) => {
                 if (data.length > 0) {
@@ -204,7 +227,7 @@ const EventViewer = ({url}) => {
                 isLoading.current = false;
             });
         }
-    }, [current, url, start, eventNames]);
+    }, [current, url, start, filterEvents, filterLink]);
 
     useEffect(() => {
         requestUpdate(200);
@@ -213,7 +236,6 @@ const EventViewer = ({url}) => {
                 first: events[0].sn,
                 last: events[events.length-1].sn
             };
-            connections.current = makeConnections(events);
         }
     }, [events]);
 
@@ -248,7 +270,7 @@ const EventViewer = ({url}) => {
                 <HStack gap={0}>{children}</HStack>
             </MenuButton>
             <MenuList>
-            <MenuOptionGroup type="checkbox" value={eventNames} onChange={setEventNames}>
+            <MenuOptionGroup type="checkbox" value={filterEvents} onChange={setFilterEvents}>
             <MenuItemOption value="log">LOG</MenuItemOption>
             <MenuItemOption value="tx">TX/RX</MenuItemOption>
             <MenuItemOption value="state">STATE</MenuItemOption>
@@ -257,18 +279,16 @@ const EventViewer = ({url}) => {
         </Menu>
     }
 
-    const [ messageFilter, setMessageFilter ] = useState("none");
     const MessageFilter = ({children}) => {
         return <Menu>
             <MenuButton as={Flex} className="filter-selector">
                 <HStack gap={0}>{children}</HStack>
             </MenuButton>
             <MenuList>
-                <MenuOptionGroup value={messageFilter} onChange={setMessageFilter}>
-                    <MenuItemOption value="none">No Filter</MenuItemOption>
-                    {Array.from(connections.current.keys()).sort().map((key) => {
-                        const value = connections.current.get(key);
-                        return <MenuItemOption value={key} key={key}>{value}</MenuItemOption>;
+                <MenuOptionGroup value={filterLink} onChange={setFilterLink}>
+                    <MenuItemOption value={NO_LINK}>No Filter</MenuItemOption>
+                    {availableLinks.map((filter) => {
+                        return <MenuItemOption value={filter.value} key={filter.value}>{filter.name}</MenuItemOption>
                     })}
                 </MenuOptionGroup>
             </MenuList>
@@ -287,7 +307,7 @@ const EventViewer = ({url}) => {
                 <Flex flex="1">
                     <MessageFilter>
                         <Text>Messages&bull;</Text><Icon as={TbFilter} />
-                        <Text>&bull;{connections.current.get(messageFilter) || "No Filter"}</Text>
+                        <Text>&bull;{getLinkName(filterLink) || "No Filter"}</Text>
                     </MessageFilter>
                 </Flex>
                 <Flex>
@@ -300,7 +320,7 @@ const EventViewer = ({url}) => {
         <Tbody className="normal">
         <Tr><Td colSpan="5" ref={topLine} textAlign="center" padding="0px" className="top-line">
             { (start !== null) && (start<events[0].sn) ?
-                <Text>...LOADING <Spinner size="xs" />...</Text>
+                <><Text>... LOADING <Spinner size="xs"/>...</Text></>
                 :
                 <>
                 { events.length > 0 && events[0].sn > top.current ?
@@ -311,8 +331,9 @@ const EventViewer = ({url}) => {
                 </>
             }
         </Td></Tr>
-        {events.map((item: Log) => rowForLog(messageFilter, item))}
-        <Tr><Td colSpan="5" ref={lastLine} textAlign="center" padding="0px" className="bottom-line"><Divider /></Td></Tr>
+        {events.map((item: Log) => rowForLog(item))}
+        <Tr><Td colSpan="5" ref={lastLine} textAlign="center" padding="0px" className="bottom-line">
+            <Text>...LAST LINE...</Text></Td></Tr>
         </Tbody>
         </Table>
         </Box>

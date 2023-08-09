@@ -51,6 +51,8 @@ class FeeTableJSON(TypedDict):
 class LinkID(TypedDict):
     src: NetworkID
     dst: NetworkID
+    src_name: str
+    dst_name: str
 
 
 class LinkInfo(TypedDict):
