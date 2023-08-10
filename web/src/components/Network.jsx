@@ -33,9 +33,8 @@ const NetworkInfo = ({url, id, name}) =>  {
                     <Tr><Th>Type</Th><Td>{info.type}</Td></Tr>
                     <Tr><Th>Network</Th><Td>{info.network}</Td></Tr>
                     { info.name && <Tr><Th>Name</Th><Td>{info.name}</Td></Tr> }
-                    { info.endpoint && <Tr><Th>EndPoint</Th><Td>{info.endpoint}</Td></Tr> }
-                    { info.tx_limit && <Tr><Th>TxLimit</Th><Td isNumeric>{strfdelta(info.tx_limit)}</Td></Tr> }
-                    { info.rx_limit && <Tr><Th>RxLimit</Th><Td isNumeric>{strfdelta(info.rx_limit)}</Td></Tr> }
+                    { info.tx_limit && <Tr><Th>TxLimit</Th><Td>{strfdelta(info.tx_limit)}</Td></Tr> }
+                    { info.rx_limit && <Tr><Th>RxLimit</Th><Td>{strfdelta(info.rx_limit)}</Td></Tr> }
                     { info.bmc && <Tr><Th>BMC</Th><Td>{info.bmc}</Td></Tr> }
                     { info.bmcm && <Tr><Th>BMCM</Th><Td>{info.bmcm}</Td></Tr> }
                     { info.bmcs && <Tr><Th>BMCS</Th><Td>{info.bmcs}</Td></Tr> }

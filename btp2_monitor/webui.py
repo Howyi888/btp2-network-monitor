@@ -105,7 +105,10 @@ class MonitorBackend:
         }, links))
 
     def get_network(self, id: NetworkID) -> dict:
-        return self.__links.get_network(id.address)
+        net_info: dict = self.__links.get_network(id.address)
+        net_info = net_info.copy()
+        del net_info['endpoint']
+        return net_info
 
     def get_link(self, src: NetworkID, dst: NetworkID) -> LinkInfo:
         if not self.__initialized:
