@@ -6,7 +6,7 @@ from threading import Timer
 import traceback
 from typing import List, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
@@ -155,7 +155,12 @@ class MonitorBackend:
                 timer = Timer(0.1, self.get_fee_table, [id, True])
                 timer.start()
             return table
-        table = self.__links.get_relay_fee_table(id.address)
+
+        try:
+            table = self.__links.get_relay_fee_table(id.address)
+        except BaseException as exc:
+            raise HTTPException(status_code=500, detail=f'fail to get relay_fee_table')
+
         for e in table['table']:
             e['fees'] = list(map(lambda x: str(x), e['fees']))
         self.__relay_fee_table[id] = (now, table)
