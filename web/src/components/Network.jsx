@@ -66,7 +66,7 @@ const NetworkInfo = ({url, id, name}) =>  {
                 </PopoverBody>
             </PopoverContent>
         </Popover>
-        <Popover isLazy="true" preventOverflow="true" boundary="scrollParent">
+        {/* <Popover isLazy="true" preventOverflow="true" boundary="scrollParent">
             <Tooltip hasArrow label="Show fee table" placement="top">
             <Box padding={0}>
             <PopoverTrigger>
@@ -84,7 +84,7 @@ const NetworkInfo = ({url, id, name}) =>  {
                 <RelayFeeTable url={url} id={id}/>
             </PopoverBody>
             </PopoverContent>
-        </Popover>
+        </Popover> */}
         </HStack>
     )
 };
