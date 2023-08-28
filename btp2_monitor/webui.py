@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
+from readerwriterlock import rwlock
 
 from .webui_types import FeeTableJSON, NetworkID, LinkID, LinkInfo
 from .monitor import LinkEvent, Links
@@ -32,6 +33,7 @@ class MonitorBackend:
         self.__initialized = False
         self.__stopped = False
         self.__relay_fee_table: dict[NetworkID,tuple[datetime,FeeTableJSON]] = {}
+        self.__lock = rwlock.RWLockFair()
         self.try_update()
 
     @property
@@ -52,13 +54,17 @@ class MonitorBackend:
         return log
 
     def try_update(self):
-        if self.__stopped:
-            return
+        with self.__lock.gen_rlock():
+            if self.__stopped:
+                return
         self.__timer = None
 
         try :
             now = datetime.now()
-            updated, changes = self.__links.update()
+
+            status = self.__links.query_status(all)
+            with self.__lock.gen_wlock():
+                updated, changes = self.__links.apply_status(status)
         except BaseException as exc:
             traceback.print_exc()
             self.write_log(now, "", "", "log", f'Exception:{str(exc)}')
@@ -93,10 +99,13 @@ class MonitorBackend:
         links = []
         if not self.__initialized:
             return links
-        for key in self.__links.get_connected_links():
-            if key in links or (key[1], key[0]) in links:
-                continue
-            links.append(key)
+
+        with self.__lock.gen_rlock():
+            for key in self.__links.get_connected_links():
+                if key in links or (key[1], key[0]) in links:
+                    continue
+                links.append(key)
+
         return list(map(lambda key: {
              'src': NetworkID.from_address(key[0]),
              'src_name': self.__links.name_of(key[0]),
@@ -114,21 +123,22 @@ class MonitorBackend:
         if not self.__initialized:
             raise Exception('Unknown')
 
-        link = self.__links.get_link(src.address, dst.address)
-        return {
-            'src': NetworkID.from_address(link.src),
-            'dst': NetworkID.from_address(link.dst),
-            'src_name': link.src_name,
-            'dst_name': link.dst_name,
-            'state': link.state,
-            'tx_seq': link.tx_seq,
-            'rx_seq': link.rx_seq,
-            'tx_height': link.tx_height,
-            'rx_height': link.rx_height,
-            'pending_count': link.pending_count,
-            'pending_delay': link.pending_duration.total_seconds(),
-            'time_limit': link.time_limit,
-        }
+        with self.__lock.gen_rlock():
+            link = self.__links.get_link(src.address, dst.address)
+            return {
+                'src': NetworkID.from_address(link.src),
+                'dst': NetworkID.from_address(link.dst),
+                'src_name': link.src_name,
+                'dst_name': link.dst_name,
+                'state': link.state,
+                'tx_seq': link.tx_seq,
+                'rx_seq': link.rx_seq,
+                'tx_height': link.tx_height,
+                'rx_height': link.rx_height,
+                'pending_count': link.pending_count,
+                'pending_delay': link.pending_duration.total_seconds(),
+                'time_limit': link.time_limit,
+            }
 
     def get_logs(self, src: Optional[NetworkID], dst: Optional[NetworkID], **kwargs) -> List[Log]:
         logs = self.__storage.get_logs(
@@ -145,36 +155,38 @@ class MonitorBackend:
         return logs
 
     def get_fee_table(self, id: NetworkID, refresh: Optional[bool] = False) -> FeeTableJSON:
-        if self.__stopped:
-            return None
-        now = datetime.now()
-        if id in self.__relay_fee_table and not refresh:
-            ts, table = self.__relay_fee_table[id]
-            if (now-ts).total_seconds() >= REFRESH_INTERVAL:
-                self.__relay_fee_table[id] = (now, table)
-                timer = Timer(0.1, self.get_fee_table, [id, True])
-                timer.start()
+        with self.__lock.gen_wlock():
+            if self.__stopped:
+                return None
+            now = datetime.now()
+            if id in self.__relay_fee_table and not refresh:
+                ts, table = self.__relay_fee_table[id]
+                if (now-ts).total_seconds() >= REFRESH_INTERVAL:
+                    self.__relay_fee_table[id] = (now, table)
+                    timer = Timer(0.1, self.get_fee_table, [id, True])
+                    timer.start()
+                return table
+
+            try:
+                table = self.__links.get_relay_fee_table(id.address)
+            except BaseException as exc:
+                raise HTTPException(status_code=500, detail=f'fail to get relay_fee_table')
+
+            for e in table['table']:
+                e['fees'] = list(map(lambda x: str(x), e['fees']))
+            self.__relay_fee_table[id] = (now, table)
             return table
 
-        try:
-            table = self.__links.get_relay_fee_table(id.address)
-        except BaseException as exc:
-            raise HTTPException(status_code=500, detail=f'fail to get relay_fee_table')
-
-        for e in table['table']:
-            e['fees'] = list(map(lambda x: str(x), e['fees']))
-        self.__relay_fee_table[id] = (now, table)
-        return table
-
     def term(self):
-        if self.__stopped:
-            return
-        self.__stopped = True
-        if self.__timer is not None:
-            self.__timer.cancel()
-            self.__timer = None
-        self.write_log(datetime.now(), '', '', 'log', f'SHUTDOWN {MONITOR_VERSION}')
-        self.__storage.term()
+        with self.__lock.gen_wlock():
+            if self.__stopped:
+                return
+            self.__stopped = True
+            if self.__timer is not None:
+                self.__timer.cancel()
+                self.__timer = None
+            self.write_log(datetime.now(), '', '', 'log', f'SHUTDOWN {MONITOR_VERSION}')
+            self.__storage.term()
 
 
 be = MonitorBackend()

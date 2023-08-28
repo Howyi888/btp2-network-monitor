@@ -2,6 +2,8 @@ import unittest
 from btp2_monitor.main import build_slack_message
 from btp2_monitor.monitor import LinkEvent
 
+from readerwriterlock import rwlock
+
 class FakeLink:
 	def __init__(self, src: str, dst: str) -> None:
 		self.src_name = src
@@ -14,4 +16,14 @@ class MainTest(unittest.TestCase):
 		]
 		msg = build_slack_message(events)
 		print(msg)
+
+
+	def test_rwlock(self):
+		lock = rwlock.RWLockFair()
+		try :
+			with lock.gen_wlock():
+				raise Exception("FAILED")
+		except BaseException as exc:
+			with lock.gen_wlock():
+				print("TEST IS OK")
 
