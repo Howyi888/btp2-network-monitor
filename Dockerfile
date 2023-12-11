@@ -2,7 +2,7 @@ FROM node:18 as web
 COPY ./web /web
 WORKDIR /web
 
-RUN npm install
+RUN npm ci
 RUN npm run build
 
 FROM python:3.10-alpine
