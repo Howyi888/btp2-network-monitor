@@ -6,6 +6,7 @@ RUN npm ci
 RUN npm run build
 
 FROM python:3.10-alpine
+RUN apk update && apk add --no-cache build-base libffi-dev
 ARG MONITOR_VERSION
 COPY ./btp2_monitor /app/btp2_monitor
 COPY ./requirements.txt /app/requirements.txt
