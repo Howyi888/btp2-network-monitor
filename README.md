@@ -127,8 +127,8 @@ Then start container consider followings.
 
 ```shell
 docker run -it -d --name btp2-monitor \
-    -v data:/app/data \
-    -p 8000:<my_port> btp2-monitor
+    -v $PWD/data:/app/data \
+    -p <my_port>:8000 btp2-monitor
 ```
 
 Then bring up your browser, then enter URL `http://localhost:<my_port>`
