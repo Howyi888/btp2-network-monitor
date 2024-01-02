@@ -62,7 +62,7 @@ class MonitorBackend:
         try :
             now = datetime.now()
 
-            status = self.__links.query_status(all)
+            status = self.__links.query_status(True)
             with self.__lock.gen_wlock():
                 updated, changes = self.__links.apply_status(status)
         except BaseException as exc:

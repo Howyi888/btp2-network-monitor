@@ -44,7 +44,7 @@ def build_slack_message(events:list[LinkEvent]) -> str:
 @click.option('--log_file', type=str, envvar="LOG_FILE")
 def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_channel: str = None, log_file: str = None):
     links: Links = obj[KEY_LINKS]
-    links.update()
+    links.update(True)
 
     def on_update(changes: List[LinkEvent]):
         if slack_hook is not None and slack_channel is not None:
@@ -70,7 +70,7 @@ def monitor_status(obj: dict, interval: int = 30, slack_hook: str = None, slack_
 @click.pass_obj
 def show_status(obj: dict):
     links: Links = obj[KEY_LINKS]
-    btp_status = links.query_status()
+    btp_status = links.query_status(True)
     known_links = btp_status.get_known_links()
 
     connected: list[tuple[str,str]] = []
