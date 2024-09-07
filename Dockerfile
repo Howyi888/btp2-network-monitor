@@ -5,7 +5,7 @@ WORKDIR /web
 RUN npm ci
 RUN npm run build
 
-FROM python:3.10-alpine
+FROM python:3.12.0a1-alpine
 RUN apk update && apk add --no-cache build-base libffi-dev
 ARG MONITOR_VERSION
 COPY ./btp2_monitor /app/btp2_monitor
