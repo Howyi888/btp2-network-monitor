@@ -6,3 +6,5 @@ textual==0.27.0
 fastapi==0.97.0
 uvicorn==0.22.0
 readerwriterlock==1.0.9
+aiohttp>=3.13.3 # not directly required, pinned by Snyk to avoid a vulnerability
+urllib3>=2.6.3 # not directly required, pinned by Snyk to avoid a vulnerability
